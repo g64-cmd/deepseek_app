@@ -21,6 +21,7 @@ import { showToast } from '../components/base/toastState.js'
 import { onUploadNotice } from '../services/attachments.js'
 import { Button } from '../components/base/Button.js'
 import { stopReadAloud } from '../services/speech/readAloud.js'
+import { setupPlatform } from '../platform/index.js'
 import { CollapsedSider } from '../components/sider/CollapsedSider.js'
 import { closeMobileSider } from '../components/sider/mobileSiderState.js'
 import { MobileSider, Sider } from '../components/sider/Sider.js'
@@ -72,6 +73,9 @@ export const App = () => {
     // 首次打开先在设置里输入 API Key
     ensureApiKey()
   }, [])
+
+  // Android 系统返回键与外链委托；Web 下为 no-op
+  useEffect(() => setupPlatform(), [])
 
   return (
     <>
