@@ -8,6 +8,9 @@
   "scripts": {
     "dev": "rspack serve -c rspack.config.ts",
     "build": "rspack build -c rspack.config.ts",
+    "build:android": "rspack build -c rspack.config.ts && cap sync android",
+    "apk:debug": "pnpm build:android && cd android && .\\gradlew.bat assembleDebug",
+    "apk:install": "adb install -r android/app/build/outputs/apk/debug/app-debug.apk",
     "type": "tsc -p tsconfig.json",
     "lint": "oxlint src rspack.config.ts",
     "format": "oxfmt --write ."
