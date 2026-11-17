@@ -1,0 +1,2 @@
+# Preserve downloaded bytes and their manifest SHA-256 hashes across checkouts.
+docs/deepseek-api/snapshot-*/** -text

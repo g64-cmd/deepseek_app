@@ -9,3 +9,7 @@ build/
 .env.*
 !.env.example
 tmp/
+.idea/
+.vscode/
+# 官方 API 快照体积大（~125 MiB），留在本地；可用 scripts/sync_deepseek_docs.py 重新生成
+docs/deepseek-api/snapshot-*/

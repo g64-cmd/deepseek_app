@@ -4,6 +4,8 @@
 
 基于 DeepSeek API 的静态聊天示例。无需应用后端，浏览器直接请求配置的 API 服务。
 
+本仓库正在规划基于此 Demo 的 Android 客户端。第一阶段的[项目设计、官方 API 离线资料与初步改进方案](docs/README.md)已整理，供审阅；Android 应用尚未实现。
+
 点击 [在线体验](https://deepseek-ai.github.io/chat-demo/) 即可使用，也可以前往 [Releases](https://github.com/deepseek-ai/deepseek-chat-demo/releases) 下载压缩包，解压后双击 `index.html` 在本地使用，无需安装或构建。首次使用时，请在设置中填写 API Key。
 
 ## 运行
