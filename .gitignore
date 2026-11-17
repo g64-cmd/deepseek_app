@@ -13,3 +13,9 @@ tmp/
 .vscode/
 # 官方 API 快照体积大（~125 MiB），留在本地；可用 scripts/sync_deepseek_docs.py 重新生成
 docs/deepseek-api/snapshot-*/
+# Android 构建产物与本地配置
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/capacitor-cordova-android-plugins/
