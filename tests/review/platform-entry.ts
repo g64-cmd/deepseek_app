@@ -1,0 +1,6 @@
+export { Modal } from '../../src/components/base/Modal.js'
+export { CitationLink } from '../../src/components/search/CitationLink.js'
+export { registerBackButton } from '../../src/platform/backButton.js'
+export { delegateExternalAnchors } from '../../src/platform/externalLinks.js'
+export { toMdAst } from '../../src/services/markdown/parse.js'
+export { testRuntime } from './platform-runtime.cjs'

@@ -36,6 +36,9 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      - name: Run regression tests
+        run: pnpm test
+
       - name: Build web
         run: pnpm build
 
