@@ -91,7 +91,7 @@
 
 持 Key 模拟器验证已于 2026-11-19 全部完成（见上文各链路）。剩余：
 
-- [ ] **CI**：develop 推送后在 GitHub Actions 首跑 quality.yml（type/lint/test/web build/JDK21 assembleDebug + APK artifact）
+- [x] **CI**：develop 推送后 quality.yml 首跑全绿（2026-11-19，run 44399788976：type/lint/test/web build/JDK21 assembleDebug + APK artifact）
 - [ ] **真机项**（有设备后补测；模拟器已验证项不再重复）：
   - [ ] 耳机插拔、来电中断、音频焦点（ASR/TTS 使用中）
   - [ ] Android 15+ 强制 edge-to-edge 下的 insets（当前 API 34 未覆盖）
