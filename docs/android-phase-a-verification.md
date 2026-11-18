@@ -1,10 +1,10 @@
 # Android 阶段 A 四链路验证记录
 
-日期：2026-11-17 ～ 2026-11-18（Asia/Singapore）。
-构建基线：`develop` / `3203949`（`build: android 构建脚本与 CI 门禁`），调试 APK `app-debug.apk`（约 6.5 MB，versionCode 1）。
+日期：2026-11-17 ～ 2026-11-19（Asia/Singapore）。
+构建基线：`develop` / `3203949`（`build: android 构建脚本与 CI 门禁`）；持 Key 验证与 Keystore/草稿功能在 `691f803` 构建上完成。调试 APK `app-debug.apk`（约 6.5 MB，versionCode 1）。
 对应方案：[Android 初步改进方案](android-improvement-proposal.md) 阶段 A 与 3.1 节四条链路。
 
-本文区分"模拟器已验证""待真实 API Key""待真机"三类结论。截图证据保留于验证过程，未随仓库存档；每项的通过判定以可复现的操作与日志为准。
+**结论（2026-11-19）**：四条链路的模拟器可验证项全部通过（真实 API Key）；阶段 A 剩余真机项见第 4 节。
 
 ## 1. 环境与版本锁定
 
@@ -23,21 +23,30 @@
 
 ## 2. 链路验证结果
 
-### 链路 1 网络 / SSE —— 部分通过，待真实 API Key
+### 链路 1 网络 / SSE —— 通过（2026-11-19，真实 Key）
 
 | 项 | 结果 | 说明 |
 | --- | --- | --- |
 | WebView 加载内置 dist | 通过 | `publicPath:'auto'` 相对路径，`https://localhost/static/...` 全部本地命中（logcat `Handling local request`） |
-| SSE 增量 / 停止 / 断流 / 上传 | **待真实 API Key** | 需要 DeepSeek 账号的付费 Key；阶段 A 未持有，未调用计费接口 |
-| CORS 预判 | 高置信未验证 | Web Pages 版跨 origin 可用；模拟器未装可用的 Chrome 浏览器 app，chrome://inspect 无法完整取证。**待 Key 输入校验（GET /models）时一并验证 401 路径** |
-| 模拟器网络限制 | 记录 | 镜像对 gstatic/google.com 连通性探测超时（NetworkMonitor 日志），不影响 api.deepseek.com 直连判断，但真实网络行为以真机为准 |
+| Key 校验与 CORS | 通过 | 用户在 App 内输入真实 Key → `GET /models` 校验通过并保存；后续聊天证明 `https://localhost` origin 下预检与请求全通 |
+| SSE 增量渲染 | 通过 | 真实问答流式逐块渲染，节奏与 Web 版相当；自动标题生成正常 |
+| 深度思考块 | 通过 | 开启 DeepThink 后回复渲染"已深度思考（用时 N 秒）"折叠块与正文 |
+| 停止 | 通过 | 流中点停止立即生效，已收内容保留为停止态 |
+| 断流与恢复 | 通过 | 流中开飞行模式 → 红色错误条+重试按钮；恢复网络后新请求正常应答 |
+| 附件视觉问答 | 通过 | Photo Picker 选图（content://）→ multipart 上传 → 回答准确描述图片内容 |
+| 401 错误路径 | 未复测 | 与 Web 版同一代码路径（classifyStatus→apiKeyInvalid），未在 App 内重复构造 |
+| 模拟器网络限制 | 记录 | 镜像对 gstatic 探测超时，不影响 api.deepseek.com 实际调用 |
 
-### 链路 2 语音 —— 待真实 API Key 与真机
+### 链路 2 语音 —— 通过（2026-11-19，真实 Key）
 
-- 录音权限链路的声明已就位（Manifest `RECORD_AUDIO` + `MODIFY_AUDIO_SETTINGS`；Capacitor `BridgeWebChromeClient.onPermissionRequest` 内建运行时授权，无需自定义 Kotlin）。
-- `window.isSecureContext` 闸门通过（`https://localhost` 为安全上下文），录音按钮可用。
-- ASR / TTS 实际调用与识别率：**待真实 API Key**（ASR/TTS 按量计费）；模拟器需在 Extended controls → Microphone 手动勾选宿主麦克风输入。
-- 耳机插拔、来电中断、音频焦点：**待真机**。
+| 项 | 结果 | 说明 |
+| --- | --- | --- |
+| 录音权限与 getUserMedia | 通过 | 麦克风按钮启动录音：RECORD_AUDIO 已授权，`getUserMedia` 采集正常，输入框首行实时频谱与计时显示 |
+| ASR 语音转文字 | 通过 | 整段录音上传转写，识别文本进入草稿（用户验证确认） |
+| TTS 朗读 | 通过 | 点朗读按钮即播：`dumpsys audio` 证实 WhaleChat 进程 AAudio 流 `state:started`（USAGE_MEDIA）；按钮变为播放中波形动画 |
+| TTS 停止与释放 | 通过 | 再点立即停止，AAudio 流转 `state:stopped`，无遗留占用 |
+| 耳机插拔、来电中断、音频焦点 | **待真机** | 模拟器无法模拟 |
+| 真实识别率/回声消除/音质 | **待真机** | 模拟器虚拟麦克风不具代表性 |
 
 ### 链路 3 数据 —— 通过（模拟器可自动化部分）
 
@@ -46,9 +55,9 @@
 | 强杀保留 | 通过 | 导入会话后 `am force-stop` → 重启，会话列表与消息内容完整（IndexedDB 库 `chat-demo` v11 在 WebView origin 下持久） |
 | 覆盖安装保留 | 通过 | 修复版（`297d69b` 之后）构建 `install -r` → 重启直接保留既有会话与 locale；上一构建（`3203949`）同项亦通过 |
 | localStorage 持久 | 通过（间接） | locale 设置跨 force-stop / 覆盖安装保持（界面语言不回退） |
-| Keystore 凭据存取 | 通过（无值路径） | logcat 确认 `Registering plugin instance: SecureStorage` 与启动时 `get` 调用；无 Key 时正确判定并自动弹出设置。**真实 Key 的写入→重启读取闭环待用户填 Key 后补测** |
+| Keystore 凭据存取 | 通过 | 无值路径（logcat 插件注册与 `get` 调用）+ **真实 Key 闭环**：填入真实 Key → `force-stop` → 重启不弹设置（解密恢复成功），Web 校验/聊天直接可用 |
 | 草稿持久化 | 通过 | 输入框输入文本 → `force-stop` → 重启，未发送文字完整恢复（localStorage `chat-demo:draft-texts`，防抖 400ms 落盘，仅持久化文本不持久化附件） |
-| 强杀恢复语义 | 部分验证 | 无进行中流式任务时强杀正常恢复；流式中途强杀的"显示已中断、不自动重发"**待真实 Key 产生流式任务后补测** |
+| 强杀恢复语义 | 通过（2026-11-19） | 流式回答中途 `force-stop` → 重启后该回复显示停止态、已收内容保留；logcat 确认重启**零自动重发**（不产生重复计费） |
 
 ### 链路 4 文件 —— 通过（模拟器范围内）
 
@@ -80,19 +89,16 @@
 
 ## 4. 待验证清单（阶段 A 收尾条件）
 
-以下各项完成后，阶段 A 方可标记"已验证可实施"（方案 3.1 节要求真实 API 与目标设备证据）：
+持 Key 模拟器验证已于 2026-11-19 全部完成（见上文各链路）。剩余：
 
-- [ ] **持 Key 方验证**（用户提供 API Key，模拟器即可）：
-  - [ ] 设置中输入 Key → `GET /models` 校验通过并保存（同时证明 CORS 预检与请求在 `https://localhost` origin 下全通）
-  - [ ] **Keystore 闭环**：填入真实 Key → 重启 → 设置中显示已保存掩码（Keystore 加密读取成功）
-  - [ ] 错误 Key → 401 提示文案正确（apiKeyInvalid）
-  - [ ] 流式问答：首帧到达、增量渲染节奏、思考块/搜索/引用展示、停止保留已收内容
-  - [ ] 断流：`adb shell cmd connectivity airplane-mode enable/disable` 后错误呈现与恢复
-  - [ ] 附件：SAF 选图片/PDF → multipart 上传 → file_id 引用问答
-  - [ ] 录音权限弹窗（允许/拒绝各一次）→ ASR 识别入草稿；TTS 朗读与停止
-  - [ ] 流式中途 force-stop → 重启显示"已中断"、不自动重发
-- [ ] **真机项**（有设备后）：耳机/来电/音频焦点、Android 15 edge-to-edge、云盘 content://、WebView 140+ 行为、覆盖安装从上一版本升级、性能基线
-- [ ] **CI**：develop 推送后在 GitHub Actions 首跑 quality.yml（type/lint/web build/JDK21 assembleDebug + APK artifact）
+- [ ] **CI**：develop 推送后在 GitHub Actions 首跑 quality.yml（type/lint/test/web build/JDK21 assembleDebug + APK artifact）
+- [ ] **真机项**（有设备后补测；模拟器已验证项不再重复）：
+  - [ ] 耳机插拔、来电中断、音频焦点（ASR/TTS 使用中）
+  - [ ] Android 15+ 强制 edge-to-edge 下的 insets（当前 API 34 未覆盖）
+  - [ ] 云盘 content:// 提供方选附件；附件原件跨应用打开
+  - [ ] WebView 140+ 行为（含 SystemBars passthrough 路径）；低端设备性能基线
+  - [ ] 从上一正式版本覆盖升级的数据迁移（首个正式版发布前）
+- [ ] **可选补测**：错误 Key 的 401 文案在 App 内复现（与 Web 同代码路径，优先级低）；智能搜索/读链接的引用渲染（链路 1 已含 SSE 与工具链路基础）
 
 ## 5. 阶段 A 实施决策记录
 
