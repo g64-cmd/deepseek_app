@@ -61,7 +61,7 @@ API Key 和设置保存在浏览器 localStorage，会话及附件原件保存�
 
 ### Android 调试构建
 
-基于 Capacitor 8（Gradle 8.14.3 / AGP 8.7.x / compileSdk 36）。需要 Android SDK 与 **JDK 21**（Gradle 守护进程经用户级 `~/.gradle/gradle.properties` 的 `org.gradle.java.home` 指定，路径见[验证记录](docs/android-phase-a-verification.md)，不入库）：
+基于 Capacitor 8（Gradle 8.14.3 / AGP 8.13.0 / compileSdk 36）。需要 Android SDK 与 **JDK 21**（Gradle 守护进程经用户级 `~/.gradle/gradle.properties` 的 `org.gradle.java.home` 指定，路径见[验证记录](docs/android-phase-a-verification.md)，不入库）：
 
 ```sh
 pnpm apk:debug    # 构建 Web → cap sync → gradlew assembleDebug

@@ -13,7 +13,7 @@
 | 开发机 | Windows 11 + Git Bash | Node 24.11.0 / pnpm 11.21.0 |
 | JDK | Temurin/Oracle 21（`C:\Program Files\Java\jdk-21.0.12.1`） | 系统默认 java 为 25，超 Gradle/AGP 上限；经用户级 `%USERPROFILE%\.gradle\gradle.properties` 的 `org.gradle.java.home` 固定，不入库 |
 | Gradle | 8.14.3（wrapper，已入库） | Capacitor 8.6.2 模板自带 |
-| AGP / SDK | AGP 8.7.x；compileSdk 36 / targetSdk 36 / minSdk 24 | `android/variables.gradle` |
+| AGP / SDK | AGP 8.13.0（`android/build.gradle` 第 10 行）；compileSdk 36 / targetSdk 36 / minSdk 24 | `android/variables.gradle` |
 | Capacitor | core/cli/android 8.6.2；app 8.1.2、filesystem 8.1.5、share 8.0.3 | 版本由 lockfile 锁定 |
 | 验证设备 | Pixel_8 AVD，Android 14（API 34），Google APIs 镜像 | System WebView 113.0.5672.136（镜像无法升级） |
 | 应用 | `com.g64_cmd.whalechat` / WhaleChat，androidScheme `https`（origin `https://localhost`） | 发布前 origin 不可再变 |
@@ -95,7 +95,7 @@
 | 决策 | 内容与理由 |
 | --- | --- |
 | insets 策略 | 不加 `viewport-fit=cover`、不改 CSS：走 Capacitor SystemBars 原生 decor padding，Web 版零变化；未来若需要内容延伸到系统栏后（沉浸式），再切换 passthrough 模式并用 `--safe-area-inset-*` 变量适配 |
-| 外链 | 事件委托（捕获阶段拦截 `a[target="_blank"]` http(s)）+ `window.open` 调用点改走 `platform.openExternal`；不引入 @capacitor/browser（系统浏览器已够用） |
-| 返回键退出 | 无浮层时 `App.exitApp()` 直接退出；双击退出确认、预测性返回动画适配留阶段 B |
+| 外链 | 事件委托（**冒泡阶段**拦截 `a[target="_blank"]` http(s)，跳过已 `defaultPrevented` 的事件）+ `window.open` 调用点改走 `platform.openExternal`；不引入 @capacitor/browser（系统浏览器已够用）。捕获阶段会在嵌套引用角标处理前抢先开链，已按 review 修正 |
+| 返回键退出 | **弹窗栈优先**：`Modal.closeTopModal()` 与 Esc 共用关闭路径（含 busy 守卫，有弹窗时一律消费返回操作），无弹窗时依次收起侧栏、搜索面板，最后 `App.exitApp()` 退出；双击退出确认、预测性返回动画适配留阶段 B |
 | 导出 | cache + Share 分享面板（含"保存到文件"），替代 WebView 无效的 `a.download`；Web 分支保持原下载行为 |
 | 传输层 | 未抽象，直接用 WebView fetch + ReadableStream；`src/platform/index.ts` 注释预留原生传输替换点。若链路 1 持 Key 验证失败，按方案 4.1 评估 Kotlin 原生 SSE 桥 |

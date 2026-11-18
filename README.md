@@ -61,7 +61,7 @@ Settings → Data → Delete all chats clears all local conversations, original 
 
 ### Android debug build
 
-Built on Capacitor 8 (Gradle 8.14.3 / AGP 8.7.x / compileSdk 36). Requires the Android SDK and **JDK 21** for the Gradle daemon (pinned via `org.gradle.java.home` in the user-level `~/.gradle/gradle.properties`; see the [verification record](docs/android-phase-a-verification.md) — not committed to the repo):
+Built on Capacitor 8 (Gradle 8.14.3 / AGP 8.13.0 / compileSdk 36). Requires the Android SDK and **JDK 21** for the Gradle daemon (pinned via `org.gradle.java.home` in the user-level `~/.gradle/gradle.properties`; see the [verification record](docs/android-phase-a-verification.md) — not committed to the repo):
 
 ```sh
 pnpm apk:debug    # build web → cap sync → gradlew assembleDebug
