@@ -2,7 +2,7 @@
 
 日期：2026-11-17（Asia/Singapore）  
 基线：`develop` / `5d5dd75` / chat-demo `0.1.1`。  
-状态：第一阶段调研与文档；本文提出的 Android 设计、功能调整和发布工作尚未实施。
+状态：阶段 A（工程基础）已于 `3203949` 实施——Capacitor 8 工程、平台适配层、CI 门禁已入库，调试 APK 可构建安装；四链路验证进度与剩余条件见[阶段 A 验证记录](android-phase-a-verification.md)。阶段 B 及之后尚未实施。
 
 ## 1. 建议与目标
 

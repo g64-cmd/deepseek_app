@@ -4,7 +4,7 @@
 
 基于 DeepSeek API 的静态聊天示例。无需应用后端，浏览器直接请求配置的 API 服务。
 
-本仓库正在规划基于此 Demo 的 Android 客户端。第一阶段的[项目设计、官方 API 离线资料与初步改进方案](docs/README.md)已整理，供审阅；Android 应用尚未实现。
+本仓库正在基于此 Demo 构建 Android 客户端（WhaleChat，Capacitor 容器方案）。[方案文档](docs/README.md)与[阶段 A 验证记录](docs/android-phase-a-verification.md)已整理：Android 调试 APK 可构建安装，四条技术链路中数据与文件链路已在模拟器通过，网络/语音链路的真实 API 验证待 API Key。
 
 点击 [在线体验](https://deepseek-ai.github.io/chat-demo/) 即可使用，也可以前往 [Releases](https://github.com/deepseek-ai/deepseek-chat-demo/releases) 下载压缩包，解压后双击 `index.html` 在本地使用，无需安装或构建。首次使用时，请在设置中填写 API Key。
 
@@ -47,15 +47,28 @@ API Key 和设置保存在浏览器 localStorage，会话及附件原件保存�
 
 ## 开发
 
-| 命令          | 用途                |
-| ------------- | ------------------- |
-| `pnpm dev`    | 启动开发服务器      |
-| `pnpm build`  | 构建到 `dist/`      |
-| `pnpm type`   | TypeScript 类型检查 |
-| `pnpm lint`   | oxlint 检查         |
-| `pnpm format` | oxfmt 格式化        |
+| 命令              | 用途                          |
+| ----------------- | ----------------------------- |
+| `pnpm dev`        | 启动开发服务器                |
+| `pnpm build`      | 构建到 `dist/`                |
+| `pnpm type`       | TypeScript 类型检查           |
+| `pnpm lint`       | oxlint 检查                   |
+| `pnpm format`     | oxfmt 格式化                  |
+| `pnpm apk:debug`  | 构建 Web 并打包 Android 调试 APK |
+| `pnpm apk:install`| `adb install -r` 安装调试 APK   |
 
 [rspack.config.ts](rspack.config.ts) 默认连接 `https://api.deepseek.com`。`createConfig({ apiOrigin, devServer })` 支持自定义 API 地址和开发服务器代理。
+
+### Android 调试构建
+
+基于 Capacitor 8（Gradle 8.14.3 / AGP 8.7.x / compileSdk 36）。需要 Android SDK 与 **JDK 21**（Gradle 守护进程经用户级 `~/.gradle/gradle.properties` 的 `org.gradle.java.home` 指定，路径见[验证记录](docs/android-phase-a-verification.md)，不入库）：
+
+```sh
+pnpm apk:debug    # 构建 Web → cap sync → gradlew assembleDebug
+pnpm apk:install  # 安装到已连接的设备/模拟器
+```
+
+平台差异集中在 [src/platform/](src/platform/)（外链、文件导出、返回键），Web 行为不变；应用 ID `com.g64_cmd.whalechat`，WebView origin `https://localhost`（发布前不可变更）。
 
 聊天默认使用 `deepseek-flash`，通过 Anthropic 兼容的 Messages / Files API 通信；语音使用 ASR / TTS 接口。请求使用搜索、链接阅读、标题和 `latest_reminder` 等扩展，接入服务需支持相应能力。附件实际支持的格式以服务端校验为准。
 

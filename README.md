@@ -4,7 +4,7 @@ English | [简体中文](README.zh-CN.md)
 
 A static chat demo powered by the DeepSeek API. No application backend is required: the browser connects directly to the configured API service.
 
-This repository is planning an Android client based on the demo. See the [design review, official API archive, and initial improvement proposal](docs/README.md) (Chinese). The Android app has not been implemented yet.
+This repository is building an Android client (WhaleChat, via a Capacitor shell) on top of the demo. See the [docs index](docs/README.md) and the [Phase A verification record](docs/android-phase-a-verification.md) (Chinese): a debug APK builds and installs, the data and file chains passed on an emulator, and the network/voice chains still need verification with a real API key.
 
 You can [try the app online](https://deepseek-ai.github.io/chat-demo/) or download the archive from [Releases](https://github.com/deepseek-ai/deepseek-chat-demo/releases), extract it, and double-click `index.html` to use it locally without installation or a build. Enter your API key in Settings before your first chat.
 
@@ -47,15 +47,28 @@ Settings → Data → Delete all chats clears all local conversations, original 
 
 ## Development
 
-| Command       | Description                  |
-| ------------- | ---------------------------- |
-| `pnpm dev`    | Start the development server |
-| `pnpm build`  | Build into `dist/`           |
-| `pnpm type`   | Run TypeScript type checks   |
-| `pnpm lint`   | Lint with oxlint             |
-| `pnpm format` | Format with oxfmt            |
+| Command               | Description                          |
+| --------------------- | ------------------------------------ |
+| `pnpm dev`            | Start the development server         |
+| `pnpm build`          | Build into `dist/`                   |
+| `pnpm type`           | Run TypeScript type checks           |
+| `pnpm lint`           | Lint with oxlint                     |
+| `pnpm format`         | Format with oxfmt                    |
+| `pnpm apk:debug`      | Build web and package a debug APK    |
+| `pnpm apk:install`    | `adb install -r` the debug APK       |
 
 [rspack.config.ts](rspack.config.ts) uses `https://api.deepseek.com` by default. Use `createConfig({ apiOrigin, devServer })` to customize the API origin and development server proxy.
+
+### Android debug build
+
+Built on Capacitor 8 (Gradle 8.14.3 / AGP 8.7.x / compileSdk 36). Requires the Android SDK and **JDK 21** for the Gradle daemon (pinned via `org.gradle.java.home` in the user-level `~/.gradle/gradle.properties`; see the [verification record](docs/android-phase-a-verification.md) — not committed to the repo):
+
+```sh
+pnpm apk:debug    # build web → cap sync → gradlew assembleDebug
+pnpm apk:install  # install onto a connected device or emulator
+```
+
+Platform differences live in [src/platform/](src/platform/) (external links, file export, back button); web behavior is unchanged. App ID is `com.g64_cmd.whalechat`, and the WebView origin is `https://localhost` (must not change after release).
 
 Chat uses `deepseek-flash` by default through Anthropic-compatible Messages / Files APIs. Speech features use ASR / TTS endpoints. Requests include extensions for search, link reading, titles, and `latest_reminder`, so the configured service must support the corresponding capabilities. Supported attachment formats are determined by server-side validation.
 
