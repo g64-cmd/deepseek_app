@@ -1,5 +1,10 @@
 import { create } from 'zustand'
 import type { TtsVoice } from './api/speech.js'
+import {
+  readSecureApiKey,
+  secureCredentialsAvailable,
+  writeSecureApiKey,
+} from '../platform/secureStorage.js'
 import { normalizeLocation, type UserLocation } from './location.js'
 
 export type Locale = 'zh-CN' | 'en-US'
@@ -88,7 +93,8 @@ const initialThemePreference = (): ThemePreference => {
 const initialTtsVoice = (): TtsVoice => (read(KEYS.ttsVoice) === 'tide' ? 'tide' : 'stella')
 
 export const useSettings = create<Settings>(() => ({
-  apiKey: read(KEYS.apiKey),
+  // 原生侧 API Key 存于 Keystore 加密存储（见 hydrateApiKey），Web 侧仍读 localStorage
+  apiKey: secureCredentialsAvailable ? null : read(KEYS.apiKey),
   locale: initialLocale(),
   location: initialLocation(),
   themePreference: initialThemePreference(),
@@ -120,8 +126,36 @@ export const setTtsVoice = (ttsVoice: TtsVoice) => {
 }
 
 export const setApiKey = (apiKey: string | null) => {
-  write(KEYS.apiKey, apiKey)
+  if (secureCredentialsAvailable) {
+    // 写入失败时与 localStorage 同策略：只在内存生效，重启后需重新输入
+    void writeSecureApiKey(apiKey).catch(() => {})
+  } else {
+    write(KEYS.apiKey, apiKey)
+  }
   useSettings.setState({ apiKey })
+}
+
+/** 启动时把 Keystore 中的 API Key 注入内存；首次升级时迁移 localStorage 明文并清除。须在渲染前完成。 */
+export const hydrateApiKey = async (): Promise<void> => {
+  if (!secureCredentialsAvailable) {
+    return
+  }
+  try {
+    let value = await readSecureApiKey()
+    if (value === null) {
+      const legacy = read(KEYS.apiKey)
+      if (legacy) {
+        await writeSecureApiKey(legacy)
+        write(KEYS.apiKey, null)
+        value = legacy
+      }
+    }
+    if (value) {
+      useSettings.setState({ apiKey: value })
+    }
+  } catch {
+    // 读取失败按无 Key 处理，由用户重新输入
+  }
 }
 
 export const setThinking = (thinking: boolean) => {

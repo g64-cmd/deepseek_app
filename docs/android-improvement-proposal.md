@@ -2,7 +2,7 @@
 
 日期：2026-11-17（Asia/Singapore）  
 基线：`develop` / `5d5dd75` / chat-demo `0.1.1`。  
-状态：阶段 A（工程基础）已于 `3203949` 实施——Capacitor 8 工程、平台适配层、CI 门禁已入库，调试 APK 可构建安装；四链路验证进度与剩余条件见[阶段 A 验证记录](android-phase-a-verification.md)。阶段 B 及之后尚未实施。
+状态：阶段 A（工程基础）已于 `3203949` 实施——Capacitor 8 工程、平台适配层、CI 门禁已入库，调试 APK 可构建安装。2026-11-18 复核后将 **Keystore 凭据加密与草稿持久化划入阶段 A**（原排期在 B），随安全存储插件与草稿落盘一并实施；四链路验证进度与剩余条件见[阶段 A 验证记录](android-phase-a-verification.md)。阶段 B 其余内容尚未实施。
 
 ## 1. 建议与目标
 

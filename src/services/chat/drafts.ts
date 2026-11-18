@@ -23,10 +23,66 @@ type Draft = { text: string; attachments: DraftAttachment[] }
 
 export const EMPTY_DRAFT: Draft = { text: '', attachments: [] }
 
-/** 草稿只保存在本次页面的内存中，独立于会话详情缓存；null 是新对话的草稿。 */
+/** 草稿文本持久化 key：{ [sessionId]: text }，'null' 对应新对话 */
+const DRAFT_TEXTS_KEY = 'chat-demo:draft-texts'
+const DRAFT_SAVE_DELAY_MS = 400
+
+const readDraftTexts = (): Record<string, string> => {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(DRAFT_TEXTS_KEY) ?? '{}')
+    if (parsed && typeof parsed === 'object') {
+      return Object.fromEntries(
+        Object.entries(parsed).filter((entry): entry is [string, string] => typeof entry[1] === 'string')
+      )
+    }
+  } catch {
+    // 损坏数据按无草稿处理
+  }
+  return {}
+}
+
+const writeDraftTexts = (texts: Record<string, string>) => {
+  try {
+    if (Object.keys(texts).length === 0) {
+      localStorage.removeItem(DRAFT_TEXTS_KEY)
+    } else {
+      localStorage.setItem(DRAFT_TEXTS_KEY, JSON.stringify(texts))
+    }
+  } catch {
+    // 存储不可用时只在内存生效
+  }
+}
+
+/** 未发送的文字跨进程保留（附件是上传中的临时状态，不持久化）；null 是新对话的草稿。 */
+const restoreDrafts = (): Map<string | null, Draft> => {
+  const drafts = new Map<string | null, Draft>()
+  for (const [sessionId, text] of Object.entries(readDraftTexts())) {
+    drafts.set(sessionId === 'null' ? null : sessionId, { text, attachments: [] })
+  }
+  return drafts
+}
+
 export const useDrafts = create<{ drafts: Map<string | null, Draft> }>(() => ({
-  drafts: new Map(),
+  drafts: restoreDrafts(),
 }))
+
+// 草稿变化防抖落盘：进程被杀后未发送的文字可恢复，发送/清空随内存状态同步移除
+let saveTimer: ReturnType<typeof setTimeout> | null = null
+useDrafts.subscribe((state) => {
+  if (saveTimer) {
+    clearTimeout(saveTimer)
+  }
+  saveTimer = setTimeout(() => {
+    saveTimer = null
+    const texts: Record<string, string> = {}
+    for (const [sessionId, draft] of state.drafts) {
+      if (draft.text) {
+        texts[String(sessionId)] = draft.text
+      }
+    }
+    writeDraftTexts(texts)
+  }, DRAFT_SAVE_DELAY_MS)
+})
 
 export const getDraft = (sessionId: string | null): Draft =>
   useDrafts.getState().drafts.get(sessionId) ?? EMPTY_DRAFT

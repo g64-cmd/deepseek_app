@@ -15,6 +15,7 @@
 | Gradle | 8.14.3（wrapper，已入库） | Capacitor 8.6.2 模板自带 |
 | AGP / SDK | AGP 8.13.0（`android/build.gradle` 第 10 行）；compileSdk 36 / targetSdk 36 / minSdk 24 | `android/variables.gradle` |
 | Capacitor | core/cli/android 8.6.2；app 8.1.2、filesystem 8.1.5、share 8.0.3 | 版本由 lockfile 锁定 |
+| SecureStorage | 应用内 Java 插件（`com.g64_cmd.whalechat.SecureStoragePlugin`） | AndroidKeyStore AES-256-GCM 加密 API Key，密文落私有 SharedPreferences；MainActivity 注册 |
 | 验证设备 | Pixel_8 AVD，Android 14（API 34），Google APIs 镜像 | System WebView 113.0.5672.136（镜像无法升级） |
 | 应用 | `com.g64_cmd.whalechat` / WhaleChat，androidScheme `https`（origin `https://localhost`） | 发布前 origin 不可再变 |
 
@@ -43,8 +44,10 @@
 | 项 | 结果 | 证据 |
 | --- | --- | --- |
 | 强杀保留 | 通过 | 导入会话后 `am force-stop` → 重启，会话列表与消息内容完整（IndexedDB 库 `chat-demo` v11 在 WebView origin 下持久） |
-| 覆盖安装保留 | 通过 | `adb install -r` 重装同一 APK → 启动直接进入既有会话，数据无丢失 |
+| 覆盖安装保留 | 通过 | 修复版（`297d69b` 之后）构建 `install -r` → 重启直接保留既有会话与 locale；上一构建（`3203949`）同项亦通过 |
 | localStorage 持久 | 通过（间接） | locale 设置跨 force-stop / 覆盖安装保持（界面语言不回退） |
+| Keystore 凭据存取 | 通过（无值路径） | logcat 确认 `Registering plugin instance: SecureStorage` 与启动时 `get` 调用；无 Key 时正确判定并自动弹出设置。**真实 Key 的写入→重启读取闭环待用户填 Key 后补测** |
+| 草稿持久化 | 通过 | 输入框输入文本 → `force-stop` → 重启，未发送文字完整恢复（localStorage `chat-demo:draft-texts`，防抖 400ms 落盘，仅持久化文本不持久化附件） |
 | 强杀恢复语义 | 部分验证 | 无进行中流式任务时强杀正常恢复；流式中途强杀的"显示已中断、不自动重发"**待真实 Key 产生流式任务后补测** |
 
 ### 链路 4 文件 —— 通过（模拟器范围内）
@@ -81,6 +84,7 @@
 
 - [ ] **持 Key 方验证**（用户提供 API Key，模拟器即可）：
   - [ ] 设置中输入 Key → `GET /models` 校验通过并保存（同时证明 CORS 预检与请求在 `https://localhost` origin 下全通）
+  - [ ] **Keystore 闭环**：填入真实 Key → 重启 → 设置中显示已保存掩码（Keystore 加密读取成功）
   - [ ] 错误 Key → 401 提示文案正确（apiKeyInvalid）
   - [ ] 流式问答：首帧到达、增量渲染节奏、思考块/搜索/引用展示、停止保留已收内容
   - [ ] 断流：`adb shell cmd connectivity airplane-mode enable/disable` 后错误呈现与恢复
@@ -99,3 +103,5 @@
 | 返回键退出 | **弹窗栈优先**：`Modal.closeTopModal()` 与 Esc 共用关闭路径（含 busy 守卫，有弹窗时一律消费返回操作），无弹窗时依次收起侧栏、搜索面板，最后 `App.exitApp()` 退出；双击退出确认、预测性返回动画适配留阶段 B |
 | 导出 | cache + Share 分享面板（含"保存到文件"），替代 WebView 无效的 `a.download`；Web 分支保持原下载行为 |
 | 传输层 | 未抽象，直接用 WebView fetch + ReadableStream；`src/platform/index.ts` 注释预留原生传输替换点。若链路 1 持 Key 验证失败，按方案 4.1 评估 Kotlin 原生 SSE 桥 |
+| 凭据存储（2026-11-18 划入 A） | 应用内 `SecureStoragePlugin`（Java，约 120 行）：AndroidKeyStore AES-256-GCM，密文落私有 SharedPreferences；JS 侧 `src/platform/secureStorage.ts` + settings 收口，Web 分支保持 localStorage 不变；含 localStorage 明文一次性迁移。渲染前 `hydrateApiKey()` 注水，读取失败按无 Key 处理 |
+| 草稿持久化（2026-11-18 划入 A） | 仅持久化草稿文本（localStorage `chat-demo:draft-texts`，防抖 400ms，随内存状态同步清理）；附件上传态不持久化。Web 侧同样生效（刷新页面草稿保留） |
