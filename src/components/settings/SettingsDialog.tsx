@@ -1,6 +1,7 @@
 import clsx from 'clsx'
 import { useRef, useState, type ReactNode } from 'react'
 import {
+  IconAccountOutline16,
   IconDarkOutline16,
   IconDataOutline16,
   IconDownloadOutline16,
@@ -38,6 +39,7 @@ import { Modal } from '../base/Modal.js'
 import { Select } from '../base/Select.js'
 import { showToast } from '../base/toastState.js'
 import { ApiKeyConfirm, ApiKeyField, useApiKeyEditor } from './ApiKeyField.js'
+import { BalancePanel, UsagePanel } from './AccountPanels.js'
 import { closeSettings, useSettingsDialog, type SettingsSection } from './settingsDialogState.js'
 import styles from './Settings.module.css'
 
@@ -56,6 +58,7 @@ const sections: { value: SettingsSection; label: TranslationKey; icon: ReactNode
     label: 'settingDialogAsideGeneralOptionLabel',
     icon: <IconSettingsOutline16 />,
   },
+  { value: 'account', label: 'settingDialogAsideAccountOptionLabel', icon: <IconAccountOutline16 /> },
   { value: 'data', label: 'settingDialogAsideDataOptionLabel', icon: <IconDataOutline16 /> },
 ]
 
@@ -107,6 +110,11 @@ const SettingsContent = () => {
               <LocationSetting />
               <ModelSetting />
               <ThinkingEffortSetting />
+            </>
+          ) : section === 'account' ? (
+            <>
+              <BalancePanel />
+              <UsagePanel />
             </>
           ) : (
             <>

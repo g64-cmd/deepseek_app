@@ -189,6 +189,22 @@ export type CreateMessageRequest = {
   title?: { enabled: boolean }
 }
 
+// ---------- 账户余额 ----------
+
+/** GET /user/balance 返回的单币种余额；金额为字符串小数（如 "110.00"），直接展示不参与运算 */
+export type BalanceInfo = {
+  currency: 'CNY' | 'USD'
+  total_balance: string
+  granted_balance: string
+  topped_up_balance: string
+}
+
+export type UserBalance = {
+  /** 账户是否有余额可供 API 调用；缺省按有余额展示 */
+  is_available?: boolean
+  balance_infos?: BalanceInfo[]
+}
+
 // ---------- 响应：流式事件 ----------
 
 export type StopReason = 'end_turn' | 'max_tokens' | 'tool_use' | 'refusal'

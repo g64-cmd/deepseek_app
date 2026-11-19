@@ -440,3 +440,65 @@
     max-width: 100%;
   }
 }
+
+/* ---------- 账户分区（余额与用量） ---------- */
+
+.accountBlock {
+  padding: 12px 0;
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--dsw-alias-label-primary);
+
+  & + & {
+    box-shadow: inset 0 1px 0 0 var(--dsw-alias-border-l2-darkmode-thin);
+  }
+}
+
+.accountHeadingRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.accountHeading {
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.accountGroup {
+  padding: 4px 0;
+}
+
+.accountGroupTitle {
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.accountRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.accountValue {
+  font-variant-numeric: tabular-nums;
+}
+
+.accountNote {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.accountWarn {
+  margin: 4px 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-state-error-primary);
+}

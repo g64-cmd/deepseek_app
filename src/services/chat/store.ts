@@ -2,8 +2,14 @@ import { create } from 'zustand'
 import { createId } from '../../utils/id.js'
 import { ApiError, streamMessage } from '../api/client.js'
 import type { ChatModel, CreateMessageRequest } from '../api/types.js'
-import { extractFileIds, getFileErrorCode, isRetryableApiError } from '../api/errors.js'
+import {
+  classifyApiError,
+  extractFileIds,
+  getFileErrorCode,
+  isRetryableApiError,
+} from '../api/errors.js'
 import { cancelUpload, describeUploadError, uploadAttachment, useUploads } from '../attachments.js'
+import { markBalanceStale } from '../balance.js'
 import { supportsVision } from '../models.js'
 import { useSettings } from '../settings.js'
 import { appendBranch, getVisibleMessages, normalizeSession, selectVersion } from './branches.js'
@@ -1144,6 +1150,10 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
           // 已收到 message_delta 的结束原因，只是缺了结尾的 message_stop
           reply = settleReply(reply, 'done', Date.now())
         } else if (error instanceof ApiError) {
+          if (classifyApiError(error) === 'insufficientBalance') {
+            // 余额已不足以继续调用，账户面板里的旧余额不再可信
+            markBalanceStale()
+          }
           reply = settleReply(reply, 'error', Date.now(), {
             kind: error.kind,
             message: error.message,
