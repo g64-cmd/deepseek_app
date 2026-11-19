@@ -4,7 +4,7 @@
 构建基线：`develop` / `3203949`（`build: android 构建脚本与 CI 门禁`）；持 Key 验证与 Keystore/草稿功能在 `691f803` 构建上完成。调试 APK `app-debug.apk`（约 6.5 MB，versionCode 1）。
 对应方案：[Android 初步改进方案](android-improvement-proposal.md) 阶段 A 与 3.1 节四条链路。
 
-**结论（2026-11-19）**：四条链路的模拟器可验证项全部通过（真实 API Key）；阶段 A 剩余真机项见第 4 节。
+**结论（2026-11-19）**：四条链路的模拟器可验证项全部通过（真实 API Key，含权限拒绝/恢复、搜索/读链接工具结果、PDF 文档问答与取消/失败路径的 review 补测）；阶段 A 剩余真机项见第 4 节。
 
 ## 1. 环境与版本锁定
 
@@ -34,7 +34,11 @@
 | 停止 | 通过 | 流中点停止立即生效，已收内容保留为停止态 |
 | 断流与恢复 | 通过 | 流中开飞行模式 → 红色错误条+重试按钮；恢复网络后新请求正常应答 |
 | 附件视觉问答 | 通过 | Photo Picker 选图（content://）→ multipart 上传 → 回答准确描述图片内容 |
+| PDF 文档问答 | 通过（2026-11-19 补测） | DocumentsUI（经 Photo Picker → Browse）选 PDF → `document` 内容块（rich_layout_recognition）解析 → 回答准确提取文档中的约定口令 |
+| 智能搜索工具链路 | 通过（2026-11-19 补测） | 开启 Search 后提问 → `server_tool_use` 搜索执行 → 搜索结果与来源面板（含站点图标）渲染、正文引用角标 [N] |
+| 读链接工具链路 | 通过（2026-11-19 补测） | 要求阅读 example.com → "已打开网页"工具块（URL+标题）渲染 → 正文准确总结页面内容 |
 | 401 错误路径 | 未复测 | 与 Web 版同一代码路径（classifyStatus→apiKeyInvalid），未在 App 内重复构造 |
+| 拒答路径 | 待自然补验 | 需构造违规内容才能触发，不在验证中主动炮制；UI 渲染代码与 Web 版共用，日常使用中自然出现拒绝时记录（阶段 B 期间） |
 | 模拟器网络限制 | 记录 | 镜像对 gstatic 探测超时，不影响 api.deepseek.com 实际调用 |
 
 ### 链路 2 语音 —— 通过（2026-11-19，真实 Key）
@@ -42,6 +46,7 @@
 | 项 | 结果 | 说明 |
 | --- | --- | --- |
 | 录音权限与 getUserMedia | 通过 | 麦克风按钮启动录音：RECORD_AUDIO 已授权，`getUserMedia` 采集正常，输入框首行实时频谱与计时显示 |
+| 权限拒绝与恢复（2026-11-19 补测） | 通过 | 撤销权限后点麦克风 → 系统授权弹窗（GrantPermissionsActivity）→ Don't allow → App 显示"未获得麦克风权限，请在系统设置中开启"提示条、无录音态残留；二次请求正确地不再弹窗（Android 标准）；在设置中重新授权后点麦克风直接恢复录音 |
 | ASR 语音转文字 | 通过 | 整段录音上传转写，识别文本进入草稿（用户验证确认） |
 | TTS 朗读 | 通过 | 点朗读按钮即播：`dumpsys audio` 证实 WhaleChat 进程 AAudio 流 `state:started`（USAGE_MEDIA）；按钮变为播放中波形动画 |
 | TTS 停止与释放 | 通过 | 再点立即停止，AAudio 流转 `state:stopped`，无遗留占用 |
@@ -66,7 +71,9 @@
 | SAF 导入 | 通过 | 设置 → Upload → 系统 DocumentsUI → Downloads 提供方 → 选 ZIP → 覆盖确认 → 会话树完整恢复（含消息内容渲染）；`<input type=file>` 零改动即用（Capacitor `onShowFileChooser` 内建） |
 | 导入替换语义 | 通过 | 第二次导入后旧会话被替换（符合"导入覆盖全部"设计） |
 | 导出 | 通过 | Download → `Filesystem.writeFile`（base64 过桥）→ 系统分享面板带 `deepseek_data-日期.zip` 出现，可选"Save to Files/Drive/Gmail"等；SharePlugin 的 FileProvider 读取成功（否则插件会 reject） |
-| 用户取消分享 | 设计支持 | 插件以 `Share canceled` reject，native 实现归一为 `cancelled`，UI 不报错（静态审查 + 插件源码核实 SharePlugin.java:78） |
+| 用户取消分享 | 通过（2026-11-19 补测） | 导出 → 分享面板 → 返回收起 → 设置无错误状态、导出按钮恢复（插件 `Share canceled` 被 native 层归一为取消，UI 静默） |
+| 选择器取消 | 通过（2026-11-19 补测） | 打开附件选择器 → 返回取消 → 无附件残留、无错误提示 |
+| 上传失败与重试 | 通过（2026-11-19 补测） | 飞行模式下附加图片 → 附件卡片红色描边+重试图标+失败原因 → 恢复网络点重试 → 上传成功、卡片恢复正常 |
 | Markdown 外链 | 通过 | 消息内 `[text](https://...)` 点击 → 捕获阶段委托 → 隐藏锚点导航 → Capacitor `launchIntent` 转交系统 ACTION_VIEW。模拟器无浏览器 app，系统弹"Chrome isn't available"恰证明 intent 已正确发出；真机将直接打开浏览器 |
 | 云盘 content:// 提供方 | **待真机/装云盘 app** | 模拟器仅覆盖 Downloads 提供方 |
 | 附件原件外部打开 | 已知限制 | 本地附件为 blob: URL，系统浏览器无法跨进程打开；native `openExternal` 对非 http(s) 静默忽略。完整方案（全屏查看器或经分享转存）留阶段 B |
@@ -98,7 +105,7 @@
   - [ ] 云盘 content:// 提供方选附件；附件原件跨应用打开
   - [ ] WebView 140+ 行为（含 SystemBars passthrough 路径）；低端设备性能基线
   - [ ] 从上一正式版本覆盖升级的数据迁移（首个正式版发布前）
-- [ ] **可选补测**：错误 Key 的 401 文案在 App 内复现（与 Web 同代码路径，优先级低）；智能搜索/读链接的引用渲染（链路 1 已含 SSE 与工具链路基础）
+- [ ] **可选补测**：错误 Key 的 401 文案在 App 内复现（与 Web 同代码路径，优先级低）；拒答路径待日常使用中自然出现时记录（见链路 1 表）
 
 ## 5. 阶段 A 实施决策记录
 
