@@ -126,8 +126,9 @@ export type ToolUseBlock = { type: 'tool_use'; id: string; name: string; input: 
 export type TextBlockParam = { type: 'text'; text: string }
 
 /**
- * 文件块：引用经 Files API 上传的文件，图片用 image、其余用 document；
- * 图片请求需带 anthropic-beta: files-api-2025-04-14；扩展模式不支持 document，返回 400。
+ * 文件块：引用经 Files API 上传的文件，图片用 image、其余（PDF/Word/PPT 等）用 document；
+ * 请求需带 anthropic-beta: files-api-2025-04-14。扩展模式支持 document 输入
+ * （rich_layout_recognition 服务端解析），旧注释"不支持 document"已过时（2026-11 快照核实）。
  */
 export type FileBlockParam = {
   type: 'image' | 'document'
@@ -172,6 +173,11 @@ export type DeepseekReadUrlTool = {
   name: 'deepseek_read_url'
 }
 
+/** 思考强度档位；仅 thinking 开启时经 output_config.effort 携带，与 thinking.type 是不同字段 */
+export type EffortLevel = 'low' | 'high' | 'max'
+
+export type OutputConfig = { effort: EffortLevel }
+
 export type CreateMessageRequest = {
   model: ChatModel
   system: string
@@ -179,6 +185,7 @@ export type CreateMessageRequest = {
   thinking: { type: 'enabled' | 'disabled' }
   tools: (DeepseekWebSearchTool | DeepseekReadUrlTool)[]
   safety_check: { level: 'high' }
+  output_config?: OutputConfig
   title?: { enabled: boolean }
 }
 

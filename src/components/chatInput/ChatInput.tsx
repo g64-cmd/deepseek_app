@@ -1,15 +1,24 @@
 import clsx from 'clsx'
-import { memo, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
+  IconChevronDownOutline14,
   IconGlobeLanguageOutline14,
+  IconLightOutline16,
   IconPaperclipOutline16,
   IconSendOutline16,
   IconStopFill16,
   IconThinkOutline14,
+  IconThinkOutline16,
+  IconWarningOutline16,
 } from '../base/icons.js'
-import { setSearch, setThinking, useSettings } from '../../services/settings.js'
+import { setModel, setSearch, setThinking, useSettings } from '../../services/settings.js'
 import { useIsMobile } from '../../app/viewport.js'
-import { sendMessage, stopReply, useChatStore } from '../../services/chat/store.js'
+import {
+  countContextImages,
+  sendMessage,
+  stopReply,
+  useChatStore,
+} from '../../services/chat/store.js'
 import {
   addDraftFiles,
   EMPTY_DRAFT,
@@ -22,11 +31,15 @@ import {
 } from '../../services/chat/drafts.js'
 import { stopReadAloud } from '../../services/speech/readAloud.js'
 import { IconButton } from '../base/IconButton.js'
+import { Menu } from '../base/Menu.js'
+import { Modal } from '../base/Modal.js'
+import { Button } from '../base/Button.js'
 import { Tooltip } from '../base/Tooltip.js'
 import { ensureApiKey } from '../settings/settingsDialogState.js'
 import { DragMask, useFileDrop } from './DragMask.js'
 import { showToast } from '../base/toastState.js'
-import { ACCEPT, useUploads } from '../../services/attachments.js'
+import { MODEL_METAS, supportsVision } from '../../services/models.js'
+import { ACCEPT, isImage as isImageFile, useUploads } from '../../services/attachments.js'
 import { DraftAttachments } from './DraftAttachments.js'
 import { useVoiceInput } from './useVoiceInput.js'
 import { VoiceButton } from './VoiceButton.js'
@@ -53,6 +66,9 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
   const importingHistory = useChatStore((state) => state.importingHistory)
   const isMobile = useIsMobile()
   const search = useSettings((state) => state.search)
+  const model = useSettings((state) => state.model)
+  /** V4 Pro 携带图片时的发送确认；draft/history 分别为草稿与上下文历史中的图片数 */
+  const [imageConfirm, setImageConfirm] = useState<{ draft: number; history: number } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const togglesRef = useRef<HTMLDivElement>(null)
@@ -76,6 +92,11 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
 
   const acceptFiles = (files: File[]) => {
     if (files.length === 0 || useChatStore.getState().importingHistory || !ensureApiKey()) {
+      return
+    }
+    // 当前模型不支持图片时不允许添加，避免用户整理好文字后才发现发不出去
+    if (!supportsVision(useSettings.getState().model) && files.some((file) => isImageFile(file.type))) {
+      showToast({ key: 'modelNoVisionImageRejected' })
       return
     }
     const error = addDraftFiles(sessionId, files, useSettings.getState().apiKey ?? '')
@@ -129,20 +150,19 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
   // 移动端录音时用频谱替代输入框内容
   const recording = voice.status === 'recording'
 
-  // 排队、上传中或上传失败的附件都留在输入框，全部上传成功后才能发送
-  const canSend = !importingHistory && !streaming && voice.status === 'idle' && draftReady
+  // 排队、上传中或上传失败的附件都留在输入框，全部上传成功后才能发送；
+  // 当前模型不支持图片而草稿里仍有图片（如切换模型后遗留）时同样不能直接发送
+  const draftImagesBlocked =
+    !supportsVision(model) && attachments.some((file) => file.isImage)
+  const canSend =
+    !importingHistory && !streaming && voice.status === 'idle' && draftReady && !draftImagesBlocked
 
-  const send = () => {
+  const submit = (options?: { dropHistoryImages?: boolean }) => {
     if (
-      useChatStore.getState().importingHistory ||
-      voice.status !== 'idle' ||
-      !prepareDraftMessage(getDraft(sessionId), useUploads.getState().tasks)
+      !prepareDraftMessage(getDraft(sessionId), useUploads.getState().tasks) ||
+      !sendMessage(sessionId, options)
     ) {
-      return
-    }
-    // 文本与上传完成态由提交动作读取最新快照，不使用上一次渲染的草稿。
-    if (!ensureApiKey() || !sendMessage(sessionId)) {
-      return
+      return false
     }
     stopReadAloud()
     if (isMobile) {
@@ -150,6 +170,26 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
     } else {
       textareaRef.current?.focus()
     }
+    return true
+  }
+
+  const send = () => {
+    if (useChatStore.getState().importingHistory || voice.status !== 'idle') {
+      return
+    }
+    // 文本与上传完成态由提交动作读取最新快照，不使用上一次渲染的草稿。
+    if (!ensureApiKey()) {
+      return
+    }
+    if (!supportsVision(useSettings.getState().model)) {
+      const draftImages = getDraft(sessionId).attachments.filter((file) => file.isImage).length
+      const historyImages = countContextImages(sessionId)
+      if (draftImages > 0 || historyImages > 0) {
+        setImageConfirm({ draft: draftImages, history: historyImages })
+        return
+      }
+    }
+    submit()
   }
 
   return (
@@ -162,6 +202,16 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
       }}
     >
       <DraftAttachments items={attachments} onRetry={retryFile} onRemove={removeFile} />
+      {draftImagesBlocked ? (
+        <div className={styles.modelWarning}>
+          <IconWarningOutline16 />
+          <span>
+            {t('modelNoVisionDraftWarning', {
+              count: attachments.filter((file) => file.isImage).length,
+            })}
+          </span>
+        </div>
+      ) : null}
       <div className={styles.textareaWrapper}>
         <textarea
           ref={textareaRef}
@@ -226,6 +276,31 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
               <span className={styles.toggleLabel}>{t('search')}</span>
             </button>
           </Tooltip>
+          {/* 模型选择：每条回复单独快照，这里只影响即将发出的请求 */}
+          <Menu
+            options={Object.values(MODEL_METAS).map((meta) => ({
+              key: meta.id,
+              label: t(meta.id === 'deepseek-flash' ? 'modelFlash' : 'modelPro'),
+              icon: meta.vision ? <IconLightOutline16 /> : <IconThinkOutline16 />,
+              onSelect: () => setModel(meta.id),
+            }))}
+          >
+            {({ open, toggle }) => (
+              <Tooltip content={t('modelSwitch')}>
+                <button
+                  type="button"
+                  className={clsx(styles.toggle, open && styles.selected)}
+                  aria-label={t('modelSwitch')}
+                  aria-haspopup="menu"
+                  aria-expanded={open}
+                  onClick={toggle}
+                >
+                  {MODEL_METAS[model].shortName}
+                  <IconChevronDownOutline14 />
+                </button>
+              </Tooltip>
+            )}
+          </Menu>
         </div>
         <div className={styles.right}>
           <VoiceButton
@@ -286,6 +361,61 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
         </div>
       </div>
       {dragging ? <DragMask /> : null}
+      {imageConfirm ? (
+        <Modal
+          title={t('modelImageConfirmTitle')}
+          onClose={() => {
+            setImageConfirm(null)
+          }}
+          footer={
+            <>
+              <Button variant="outlined" onClick={() => setImageConfirm(null)}>
+                {t('cancel')}
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  // 移除草稿图片后仅发文字；历史图片经 dropHistoryImages 在请求组装时剔除
+                  const draft = getDraft(sessionId)
+                  for (const file of draft.attachments.filter((item) => item.isImage)) {
+                    removeDraftAttachment(sessionId, file.id)
+                  }
+                  setImageConfirm(null)
+                  if (useChatStore.getState().importingHistory || voice.status !== 'idle') {
+                    return
+                  }
+                  if (ensureApiKey()) {
+                    submit({ dropHistoryImages: imageConfirm.history > 0 })
+                  }
+                }}
+              >
+                {t('modelImageSendTextOnly', {
+                  count: imageConfirm.draft + imageConfirm.history,
+                })}
+              </Button>
+              <Button
+                onClick={() => {
+                  setModel('deepseek-flash')
+                  setImageConfirm(null)
+                  if (useChatStore.getState().importingHistory || voice.status !== 'idle') {
+                    return
+                  }
+                  if (ensureApiKey()) {
+                    submit()
+                  }
+                }}
+              >
+                {t('modelImageSwitchToSend')}
+              </Button>
+            </>
+          }
+        >
+          {t('modelImageConfirmDescription', {
+            draft: imageConfirm.draft,
+            history: imageConfirm.history,
+          })}
+        </Modal>
+      ) : null}
     </div>
   )
 }

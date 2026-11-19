@@ -330,3 +330,19 @@
     cursor: not-allowed;
   }
 }
+
+/* 当前模型不支持图片输入时，草稿图片下方的警示行 */
+.modelWarning {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-state-error-primary);
+
+  > svg {
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+}

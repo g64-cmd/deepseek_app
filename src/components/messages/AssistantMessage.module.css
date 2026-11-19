@@ -92,6 +92,14 @@
   padding-bottom: 10px;
 }
 
+/* 本条回复的模型与思考强度快照；导入的历史未记录模型时不显示 */
+.modelBadge {
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-tertiary);
+  user-select: none;
+}
+
 .actions {
   display: flex;
   align-items: center;

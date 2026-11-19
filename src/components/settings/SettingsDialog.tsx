@@ -23,11 +23,15 @@ import {
   isChineseBrowser,
   setLocale,
   setLocation,
+  setModel,
+  setThinkingEffort,
   setThemePreference,
   setTtsVoice,
   useSettings,
   type ThemePreference,
 } from '../../services/settings.js'
+import { MODEL_METAS } from '../../services/models.js'
+import type { EffortLevel } from '../../services/api/types.js'
 import { useTranslate, type TranslationKey, type TranslationMessage } from '../../i18n/index.js'
 import { Button } from '../base/Button.js'
 import { Modal } from '../base/Modal.js'
@@ -101,6 +105,8 @@ const SettingsContent = () => {
               <LocaleSetting />
               <TtsVoiceSetting />
               <LocationSetting />
+              <ModelSetting />
+              <ThinkingEffortSetting />
             </>
           ) : (
             <>
@@ -309,6 +315,56 @@ const TtsVoiceSetting = () => {
             { value: 'tide', label: t('settingsTtsVoiceTide') },
           ]}
           onChange={setTtsVoice}
+        />
+      }
+    />
+  )
+}
+
+/** 模型选择：每条回复单独快照当前模型，这里只影响新回复；能力差异写入描述 */
+const ModelSetting = () => {
+  const t = useTranslate()
+  const model = useSettings((state) => state.model)
+  return (
+    <SettingCell
+      label={t('settingsModel')}
+      description={t('settingsModelDescription')}
+      status={null}
+      action={
+        <Select
+          ariaLabel={t('settingsModel')}
+          value={model}
+          options={Object.values(MODEL_METAS).map((meta) => ({
+            value: meta.id,
+            label: t(meta.id === 'deepseek-flash' ? 'modelFlash' : 'modelPro'),
+          }))}
+          onChange={setModel}
+        />
+      }
+    />
+  )
+}
+
+/** 思考强度：仅深度思考开启时随请求携带（output_config.effort），每条回复单独快照 */
+const ThinkingEffortSetting = () => {
+  const t = useTranslate()
+  const thinkingEffort = useSettings((state) => state.thinkingEffort)
+  const options: { value: EffortLevel; label: string }[] = [
+    { value: 'low', label: t('effortLow') },
+    { value: 'high', label: t('effortHigh') },
+    { value: 'max', label: t('effortMax') },
+  ]
+  return (
+    <SettingCell
+      label={t('settingsThinkingEffort')}
+      description={t('settingsThinkingEffortDescription')}
+      status={null}
+      action={
+        <Select
+          ariaLabel={t('settingsThinkingEffort')}
+          value={thinkingEffort}
+          options={options}
+          onChange={setThinkingEffort}
         />
       }
     />

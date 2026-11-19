@@ -4,6 +4,7 @@ import { ApiError, streamMessage } from '../api/client.js'
 import type { ChatModel, CreateMessageRequest } from '../api/types.js'
 import { extractFileIds, getFileErrorCode, isRetryableApiError } from '../api/errors.js'
 import { cancelUpload, describeUploadError, uploadAttachment, useUploads } from '../attachments.js'
+import { supportsVision } from '../models.js'
 import { useSettings } from '../settings.js'
 import { appendBranch, getVisibleMessages, normalizeSession, selectVersion } from './branches.js'
 import * as db from './db.js'
@@ -32,8 +33,6 @@ import {
   type UserMessage,
 } from './types.js'
 
-/** deepseek-flash 同时支持深度思考与图片输入 */
-const MODEL: ChatModel = 'deepseek-flash'
 /** 所有生成请求统一携带的助手身份说明 */
 const SYSTEM_PROMPT = '该助手为DeepSeek，由深度求索公司创造。'
 /** 保留最近打开的详情；当前会话、生成中及尚未成功保存的会话不淘汰。 */
@@ -253,21 +252,60 @@ export const bindChatPersistence = () => {
   }
 }
 
-/** 按当前开关创建回复：深度思考对应 thinking，智能搜索控制 deepseek_web_search。 */
+/** 按当前开关创建回复：模型与思考配置逐条快照，智能搜索控制 deepseek_web_search。 */
 const createReply = (): AssistantMessage => {
-  const { thinking, search } = useSettings.getState()
+  const { thinking, search, model, thinkingEffort } = useSettings.getState()
   return {
     id: createId(),
     role: 'assistant',
     createdAt: Date.now(),
-    model: MODEL,
+    model,
     thinking,
+    effort: thinking ? thinkingEffort : undefined,
     search,
     prefix: true,
     status: 'pending',
     blocks: [],
   }
 }
+
+/** 生成被模型能力拦截的原因；调用方负责向用户解释 */
+export type GenerationBlocked = 'modelNoVision'
+
+/** 请求实际携带的图片附件数（提问自身 + 上下文轮次），与 prepareFiles 的上下文规则同源 */
+const countRequestImages = (history: Message[], question: UserMessage): number => {
+  let count = question.files.filter((file) => file.isImage).length
+  for (const [user] of getContextRounds(history)) {
+    count += user.files.filter((file) => file.isImage).length
+  }
+  return count
+}
+
+/** model 不支持图片输入而请求携带了图片时不允许静默丢图，直接拦截本次生成 */
+const blockedByModelVision = (
+  model: ChatModel,
+  history: Message[],
+  question: UserMessage
+): boolean => !supportsVision(model) && countRequestImages(history, question) > 0
+
+/** 新提问时将随上下文携带的历史图片数（不含草稿附件）；发送前 UI 据此做模型能力预检 */
+export const countContextImages = (sessionId: string | null): number => {
+  const session = sessionId === null ? null : getSession(sessionId)
+  if (!session) {
+    return 0
+  }
+  let count = 0
+  for (const [user] of getContextRounds(getVisibleMessages(session))) {
+    count += user.files.filter((file) => file.isImage).length
+  }
+  return count
+}
+
+/** dropHistoryImages 时把上下文历史 user 消息里的图片附件剔除（文档附件保留） */
+const stripHistoryImages = (message: Message): Message =>
+  message.role === 'user'
+    ? { ...message, files: message.files.filter((file) => !file.isImage) }
+    : message
 
 /** 仍在生成中的回复（页面关闭或导出时未结束）按「已停止」处理 */
 const settleInterrupted = (session: Session): Session => {
@@ -545,7 +583,10 @@ export const stopReply = (sessionId: string) => getStreamController(sessionId)?.
  * 提交指定会话的最新草稿；null 表示新建会话。
  * 同步接收成功才清空草稿，附件原件由会话接管；保存失败仍通过保存入口重试。
  */
-export const sendMessage = (targetSessionId: string | null) => {
+export const sendMessage = (
+  targetSessionId: string | null,
+  options?: { dropHistoryImages?: boolean }
+) => {
   if (get().importingHistory || !get().ready) {
     return false
   }
@@ -611,27 +652,37 @@ export const sendMessage = (targetSessionId: string | null) => {
   }
   persist(sessionId)
   clearSentDraft(targetSessionId)
-  void streamReply(sessionId, reply, { history, question })
+  void streamReply(sessionId, reply, {
+    history,
+    question,
+    dropHistoryImages: options?.dropHistoryImages,
+  })
   return true
 }
 
 /** 重新生成当前路径上的回答：在原问题下新增版本，不覆盖旧回答和后续对话。 */
-export const regenerateReply = (sessionId: string, messageId?: string) => {
+export const regenerateReply = (
+  sessionId: string,
+  messageId?: string
+): GenerationBlocked | undefined => {
   if (get().importingHistory || deletingSessions.has(sessionId)) {
-    return
+    return undefined
   }
   const session = getSession(sessionId)
   if (!session || getStreamController(sessionId)) {
-    return
+    return undefined
   }
   const path = getVisibleMessages(session)
   const index =
     messageId === undefined ? path.length - 1 : path.findIndex((m) => m.id === messageId)
   const question = path[index - 1]
   if (question?.role !== 'user' || path[index]?.role !== 'assistant') {
-    return
+    return undefined
   }
   const history = path.slice(0, index - 1)
+  if (blockedByModelVision(useSettings.getState().model, history, question)) {
+    return 'modelNoVision'
+  }
   const reply = createReply()
   updateSession(sessionId, (s) => ({
     ...appendBranch(s, question.id, [reply]),
@@ -639,10 +690,15 @@ export const regenerateReply = (sessionId: string, messageId?: string) => {
   }))
   persist(sessionId)
   void streamReply(sessionId, reply, { history, question })
+  return undefined
 }
 
 /** 编辑提问后新增同父版本，保留原文件；旧问题的所有回答与后续对话仍可切回。 */
-export const editMessage = (sessionId: string, messageId: string, content: string): boolean => {
+export const editMessage = (
+  sessionId: string,
+  messageId: string,
+  content: string
+): boolean | GenerationBlocked => {
   if (get().importingHistory || deletingSessions.has(sessionId)) {
     return false
   }
@@ -663,6 +719,9 @@ export const editMessage = (sessionId: string, messageId: string, content: strin
     content: text,
     files: previous.files,
     createdAt: Date.now(),
+  }
+  if (blockedByModelVision(useSettings.getState().model, path.slice(0, index), question)) {
+    return 'modelNoVision'
   }
   const reply = createReply()
   updateSession(sessionId, (s) => ({
@@ -686,13 +745,16 @@ export const selectMessageVersion = (sessionId: string, messageId: string) => {
 }
 
 /** 继续最后一条未完成的回答：保留原消息与开关，仅将新流的内容追加到原块之后。 */
-export const continueReply = (sessionId: string, messageId: string) => {
+export const continueReply = (
+  sessionId: string,
+  messageId: string
+): GenerationBlocked | undefined => {
   if (get().importingHistory || deletingSessions.has(sessionId)) {
-    return
+    return undefined
   }
   const session = getSession(sessionId)
   if (!session || getStreamController(sessionId)) {
-    return
+    return undefined
   }
   const path = getVisibleMessages(session)
   const question = path.at(-2)
@@ -703,14 +765,18 @@ export const continueReply = (sessionId: string, messageId: string) => {
     previous.id !== messageId ||
     !canContinueReply(previous)
   ) {
-    return
+    return undefined
   }
-  const { thinking, search } = useSettings.getState()
+  const { thinking, search, model, thinkingEffort } = useSettings.getState()
+  if (blockedByModelVision(previous.model ?? model, path.slice(0, -2), question)) {
+    return 'modelNoVision'
+  }
   const reply: AssistantMessage = {
     ...previous,
-    // 未记录请求配置的回复，续写时使用默认模型和当前开关。
-    model: previous.model ?? MODEL,
+    // 未记录请求配置的回复，续写时使用当前模型和开关。
+    model: previous.model ?? model,
     thinking: previous.thinking ?? thinking,
+    effort: previous.effort ?? ((previous.thinking ?? thinking) ? thinkingEffort : undefined),
     search: previous.search ?? search,
     status: 'pending',
     stopReason: undefined,
@@ -721,6 +787,7 @@ export const continueReply = (sessionId: string, messageId: string) => {
   updateSession(sessionId, (s) => ({ ...s, updatedAt: Date.now() }))
   persist(sessionId)
   void streamReply(sessionId, reply, { history: path.slice(0, -2), question, prefix: previous })
+  return undefined
 }
 
 /** 附件补传失败后重试：保留原回答位置，重新补传并请求 */
@@ -749,7 +816,13 @@ export const retryUpload = (sessionId: string, messageId: string) => {
   void streamReply(sessionId, reply, { history: path.slice(0, index - 1), question })
 }
 
-type Request = { history: Message[]; question: UserMessage; prefix?: AssistantMessage }
+type Request = {
+  history: Message[]
+  question: UserMessage
+  prefix?: AssistantMessage
+  /** 当前模型不支持图片时丢弃上下文历史里的图片附件（提问自身的图片由发送前 UI 处理） */
+  dropHistoryImages?: boolean
+}
 
 /** 把补传得到的 serverId 写回会话里所有引用同一附件的消息（编辑、重新生成会共用附件） */
 const saveServerIds = (sessionId: string, serverIds: Map<string, string>) => {
@@ -960,6 +1033,10 @@ const waitForRetry = (attempt: number, signal: AbortSignal) =>
  * 服务端判定 file_id 失效时重新补传后重发，退避重试且次数有上限，超过则按原始报错收尾。
  */
 const streamReply = async (sessionId: string, initial: AssistantMessage, request: Request) => {
+  // 进入补传/组装前先剔除历史图片，保证后续 refreshRequest、补传与重试都基于同一份快照
+  if (request.dropHistoryImages) {
+    request = { ...request, history: request.history.map(stripHistoryImages) }
+  }
   const controller = new AbortController()
   if (!getSession(sessionId)?.title) {
     titleRequests.add(controller)
@@ -999,10 +1076,13 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
         const events = streamMessage(
           useSettings.getState().apiKey ?? '',
           {
-            model: initial.model ?? MODEL,
+            model: initial.model ?? useSettings.getState().model,
             system: SYSTEM_PROMPT,
             messages,
             thinking: { type: initial.thinking ? 'enabled' : 'disabled' },
+            ...(initial.thinking && initial.effort
+              ? { output_config: { effort: initial.effort } }
+              : {}),
             safety_check: SAFETY_CHECK,
             tools: serverTools(initial.search ?? false),
             ...(titleRequests.has(controller) ? { title: { enabled: true } } : {}),

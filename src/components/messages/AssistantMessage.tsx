@@ -8,8 +8,10 @@ import { continueReply, regenerateReply } from '../../services/chat/store.js'
 import { stopReadAloud } from '../../services/speech/readAloud.js'
 import type { AssistantMessage as AssistantMessageType } from '../../services/chat/types.js'
 import { openSettings } from '../settings/settingsDialogState.js'
+import { MODEL_METAS } from '../../services/models.js'
 import { IconButton } from '../base/IconButton.js'
 import { Button } from '../base/Button.js'
+import { showToast } from '../base/toastState.js'
 import { Markdown } from '../markdown/Markdown.js'
 import { SiteThumbnails } from '../search/SiteLogo.js'
 import { toggleSearchPanel, useSearchPanel } from '../search/searchPanelState.js'
@@ -140,6 +142,14 @@ export const AssistantMessage = memo(function AssistantMessage({
       ) : null}
       {streaming ? null : (
         <div className={styles.bottom}>
+          {message.model ? (
+            <span className={styles.modelBadge}>
+              {MODEL_METAS[message.model].shortName}
+              {message.effort === 'low' || message.effort === 'max'
+                ? ` · ${t(message.effort === 'low' ? 'effortLow' : 'effortMax')}`
+                : ''}
+            </span>
+          ) : null}
           <BranchSwitcher versions={versions} disabled={busy} onSelect={onSelectVersion} />
           <div className={clsx(styles.actions, isLast && styles.alwaysShow)}>
             {copyText ? <CopyButton text={copyText} /> : null}
@@ -153,7 +163,9 @@ export const AssistantMessage = memo(function AssistantMessage({
               disabled={busy || refused}
               onClick={() => {
                 stopReadAloud()
-                regenerateReply(sessionId, message.id)
+                if (regenerateReply(sessionId, message.id) === 'modelNoVision') {
+                  showToast({ key: 'modelNoVisionBlockToast' })
+                }
               }}
             />
           </div>
@@ -165,7 +177,9 @@ export const AssistantMessage = memo(function AssistantMessage({
               disabled={busy}
               onClick={() => {
                 stopReadAloud()
-                continueReply(sessionId, message.id)
+                if (continueReply(sessionId, message.id) === 'modelNoVision') {
+                  showToast({ key: 'modelNoVisionBlockToast' })
+                }
               }}
             >
               {t('continueGenerating')}

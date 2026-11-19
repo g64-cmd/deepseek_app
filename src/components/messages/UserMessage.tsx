@@ -8,6 +8,7 @@ import { stopReadAloud } from '../../services/speech/readAloud.js'
 import type { UserMessage as UserMessageType } from '../../services/chat/types.js'
 import { Button } from '../base/Button.js'
 import { IconButton } from '../base/IconButton.js'
+import { showToast } from '../base/toastState.js'
 import { ensureApiKey } from '../settings/settingsDialogState.js'
 import {
   BranchSwitcher,
@@ -54,7 +55,13 @@ export const UserMessage = memo(function UserMessage({
   }, [editing, draft])
 
   const sendEdit = () => {
-    if (canSend && ensureApiKey() && editMessage(sessionId, message.id, draft.trim())) {
+    if (!canSend || !ensureApiKey()) {
+      return
+    }
+    const result = editMessage(sessionId, message.id, draft.trim())
+    if (result === 'modelNoVision') {
+      showToast({ key: 'modelNoVisionBlockToast' })
+    } else if (result) {
       stopReadAloud()
       setEditing(false)
     }

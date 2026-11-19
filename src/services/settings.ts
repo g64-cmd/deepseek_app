@@ -1,18 +1,20 @@
 import { create } from 'zustand'
 import type { TtsVoice } from './api/speech.js'
+import type { ChatModel, EffortLevel } from './api/types.js'
 import {
   readSecureApiKey,
   secureCredentialsAvailable,
   writeSecureApiKey,
 } from '../platform/secureStorage.js'
 import { normalizeLocation, type UserLocation } from './location.js'
+import { DEFAULT_EFFORT, DEFAULT_MODEL, isChatModel, isEffortLevel } from './models.js'
 
 export type Locale = 'zh-CN' | 'en-US'
 
 /** 主题偏好；默认跟随系统 */
 export type ThemePreference = 'light' | 'dark' | 'system'
 
-/** 本机设置，存 localStorage：API Key、语言、主题、位置、朗读音色、深度思考与智能搜索开关、侧边栏收起状态 */
+/** 本机设置，存 localStorage：API Key、语言、主题、位置、朗读音色、深度思考与智能搜索开关、思考强度、模型、侧边栏收起状态 */
 type Settings = {
   apiKey: string | null
   locale: Locale
@@ -22,6 +24,10 @@ type Settings = {
   thinking: boolean
   search: boolean
   siderCollapsed: boolean
+  /** 聊天模型；每条回复单独快照，这里只影响新回复 */
+  model: ChatModel
+  /** 思考强度；仅深度思考开启时随请求携带 */
+  thinkingEffort: EffortLevel
 }
 
 const KEYS = {
@@ -33,6 +39,8 @@ const KEYS = {
   thinking: 'chat-demo:thinking',
   search: 'chat-demo:search',
   siderCollapsed: 'chat-demo:sider-collapsed',
+  model: 'chat-demo:model',
+  thinkingEffort: 'chat-demo:thinking-effort',
 } as const
 
 const read = (key: string) => {
@@ -92,6 +100,17 @@ const initialThemePreference = (): ThemePreference => {
 /** 未保存过时使用服务端默认音色 stella（海星） */
 const initialTtsVoice = (): TtsVoice => (read(KEYS.ttsVoice) === 'tide' ? 'tide' : 'stella')
 
+/** 保存值非法（旧版本或手改）时回退默认模型 */
+const initialModel = (): ChatModel => {
+  const saved = read(KEYS.model)
+  return saved !== null && isChatModel(saved) ? saved : DEFAULT_MODEL
+}
+
+const initialThinkingEffort = (): EffortLevel => {
+  const saved = read(KEYS.thinkingEffort)
+  return saved !== null && isEffortLevel(saved) ? saved : DEFAULT_EFFORT
+}
+
 export const useSettings = create<Settings>(() => ({
   // 原生侧 API Key 存于 Keystore 加密存储（见 hydrateApiKey），Web 侧仍读 localStorage
   apiKey: secureCredentialsAvailable ? null : read(KEYS.apiKey),
@@ -102,6 +121,8 @@ export const useSettings = create<Settings>(() => ({
   thinking: read(KEYS.thinking) === 'true',
   search: read(KEYS.search) === 'true',
   siderCollapsed: read(KEYS.siderCollapsed) === 'true',
+  model: initialModel(),
+  thinkingEffort: initialThinkingEffort(),
 }))
 
 export const setLocale = (locale: Locale) => {
@@ -171,4 +192,14 @@ export const setSearch = (search: boolean) => {
 export const setSiderCollapsed = (siderCollapsed: boolean) => {
   write(KEYS.siderCollapsed, String(siderCollapsed))
   useSettings.setState({ siderCollapsed })
+}
+
+export const setModel = (model: ChatModel) => {
+  write(KEYS.model, model)
+  useSettings.setState({ model })
+}
+
+export const setThinkingEffort = (thinkingEffort: EffortLevel) => {
+  write(KEYS.thinkingEffort, thinkingEffort)
+  useSettings.setState({ thinkingEffort })
 }
