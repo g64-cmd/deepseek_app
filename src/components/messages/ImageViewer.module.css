@@ -1,0 +1,69 @@
+/* 附件图片全屏查看器：黑底沉浸视图 */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  background-color: rgb(0 0 0 / 92%);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px 10px 20px;
+}
+
+.name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--dsw-static-neutral-bluish-00, #fff);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stage {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  user-select: none;
+  transition: transform 0.25s ease;
+  touch-action: none;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 0 22px;
+}
+
+.loading {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgb(255 255 255 / 30%);
+  border-top-color: rgb(255 255 255 / 80%);
+  border-radius: 50%;
+  animation: image-viewer-spin 0.8s linear infinite;
+}
+
+@keyframes image-viewer-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

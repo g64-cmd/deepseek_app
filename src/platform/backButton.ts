@@ -1,5 +1,5 @@
 import { App } from '@capacitor/app'
-import { closeTopModal } from '../components/base/Modal.js'
+import { closeTopModal } from '../components/base/modalStack.js'
 import { closeSearchPanel, useSearchPanel } from '../components/search/searchPanelState.js'
 import { closeMobileSider, useMobileSider } from '../components/sider/mobileSiderState.js'
 

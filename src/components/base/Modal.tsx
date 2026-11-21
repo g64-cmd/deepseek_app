@@ -4,20 +4,10 @@ import { createPortal } from 'react-dom'
 import { useTranslate } from '../../i18n/index.js'
 import { IconCloseOutline16 } from './icons.js'
 import { IconButton } from './IconButton.js'
+import { openModals } from './modalStack.js'
 import styles from './Modal.module.css'
 
-/** 当前打开的弹窗，后打开的在末尾；叠放时 Esc / 系统返回键只关闭最上层 */
-const openModals: Array<{ close: () => void }> = []
-
-/** 关闭最上层弹窗；返回是否存在弹窗（存在即视为该次关闭请求已被消费） */
-export const closeTopModal = (): boolean => {
-  const top = openModals.at(-1)
-  if (!top) {
-    return false
-  }
-  top.close()
-  return true
-}
+export { closeTopModal } from './modalStack.js'
 
 /** 遮罩 + 居中卡片，Esc / 点遮罩关闭 */
 export const Modal = ({
