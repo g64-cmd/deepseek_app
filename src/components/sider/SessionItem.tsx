@@ -4,6 +4,7 @@ import { useTranslate } from '../../i18n/index.js'
 import { IconEditOutline16, IconEllipsisOutline16, IconTrashOutline16 } from '../base/icons.js'
 import { renameSession, selectSession } from '../../services/chat/store.js'
 import type { SessionSummary } from '../../services/chat/types.js'
+import { showToast } from '../base/toastState.js'
 import { IconButton } from '../base/IconButton.js'
 import { Menu } from '../base/Menu.js'
 import { closeMobileSider } from './mobileSiderState.js'
@@ -26,7 +27,11 @@ export const SessionItem = memo(function SessionItem({
     const finish = (title: string) => {
       setEditing(false)
       if (title.trim() && title.trim() !== displayTitle) {
-        renameSession(session.id, title.trim())
+        void renameSession(session.id, title.trim()).then((ok) => {
+          if (!ok) {
+            showToast({ key: 'sessionRenameFailed', type: 'error' })
+          }
+        })
       }
     }
     return (

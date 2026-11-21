@@ -18,16 +18,43 @@ const blobToBase64 = (blob: Blob) =>
 const WRITE_CHUNK = 4 * 1024 * 1024
 const SINGLE_WRITE_LIMIT = 8 * 1024 * 1024
 
+/** 写入过 cache 的导出/分享文件清单：启动时按清单清理（localStorage 容错） */
+const CACHE_REGISTRY_KEY = 'chat-demo:export-cache'
+
+const readCacheRegistry = (): string[] => {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(CACHE_REGISTRY_KEY) ?? '[]')
+    return Array.isArray(parsed) ? parsed.filter((name): name is string => typeof name === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+const writeCacheRegistry = (names: string[]) => {
+  try {
+    localStorage.setItem(CACHE_REGISTRY_KEY, JSON.stringify(names))
+  } catch {
+    // 存储不可用时退回按前缀清理
+  }
+}
+
 /** 分块写入 cache 目录：首块 writeFile、后续 appendFile（不传 encoding 按二进制追加） */
 const writeBlobToCache = async (name: string, blob: Blob): Promise<string> => {
-  if (blob.size <= SINGLE_WRITE_LIMIT) {
-    const { uri } = await Filesystem.writeFile({
-      path: name,
-      data: await blobToBase64(blob),
-      directory: Directory.Cache,
-    })
-    return uri
-  }
+  const uri =
+    blob.size <= SINGLE_WRITE_LIMIT
+      ? (
+          await Filesystem.writeFile({
+            path: name,
+            data: await blobToBase64(blob),
+            directory: Directory.Cache,
+          })
+        ).uri
+      : await writeBlobChunked(name, blob)
+  writeCacheRegistry([...new Set([...readCacheRegistry(), name])])
+  return uri
+}
+
+const writeBlobChunked = async (name: string, blob: Blob): Promise<string> => {
   let uri = ''
   for (let offset = 0; offset < blob.size; offset += WRITE_CHUNK) {
     const chunk = blob.slice(offset, offset + WRITE_CHUNK)
@@ -42,21 +69,27 @@ const writeBlobToCache = async (name: string, blob: Blob): Promise<string> => {
 }
 
 /**
- * 启动时清理历次导出残留在 cache 目录的备份文件。不在分享结束后立刻删：
- * 「保存到文件」的 SAF 读取完成时机不可知，立即删除可能截断保存；启动时上一次
- * 会话的导出必然不再被引用。全部容错，清理失败不影响使用。
+ * 启动时清理历次导出/分享残留在 cache 目录的文件：优先按写入清单删（文件名不固定的
+ * 附件分享也覆盖），另按历史导出前缀兜底（旧版本写入、清单丢失的残留）。
+ * 不在分享结束后立刻删：「保存到文件」的 SAF 读取完成时机不可知，立即删除可能
+ * 截断保存；启动时上一次会话的文件必然不再被引用。全部容错，失败不影响使用。
  */
 export const cleanupExportCache = async (): Promise<void> => {
+  const targets = new Set(readCacheRegistry())
   try {
     const { files } = await Filesystem.readdir({ path: '', directory: Directory.Cache })
     for (const file of files) {
       if (/^(deepseek_data-|whalechat-backup-)/.test(file.name)) {
-        await Filesystem.deleteFile({ path: file.name, directory: Directory.Cache }).catch(() => {})
+        targets.add(file.name)
       }
     }
   } catch {
-    // cache 目录不可读时跳过清理
+    // cache 目录不可读时仍尝试按清单删除
   }
+  for (const name of targets) {
+    await Filesystem.deleteFile({ path: name, directory: Directory.Cache }).catch(() => {})
+  }
+  writeCacheRegistry([])
 }
 
 /**

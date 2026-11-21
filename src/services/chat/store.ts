@@ -504,9 +504,10 @@ export const selectSession = (id: string) => {
   }
 }
 
-export const renameSession = (id: string, title: string) => {
+/** 重命名；返回是否成功——已加载分支的保存失败由保存失败红条体系提示，这里恒成功 */
+export const renameSession = (id: string, title: string): Promise<boolean> => {
   if (get().importingHistory || deletingSessions.has(id)) {
-    return
+    return Promise.resolve(false)
   }
   const controller = getStreamController(id)
   if (controller) {
@@ -515,14 +516,29 @@ export const renameSession = (id: string, title: string) => {
   if (getSession(id)) {
     updateSession(id, (session) => ({ ...session, title }))
     persist(id)
-  } else {
-    set((state) => ({
-      sessions: state.sessions.map((session) =>
-        session.id === id ? { ...session, title } : session
-      ),
-    }))
-    void db.renameSession(id, title).catch(db.reportStorageError('rename session'))
+    return Promise.resolve(true)
   }
+  const previous = get().sessions.find((session) => session.id === id)?.title
+  set((state) => ({
+    sessions: state.sessions.map((session) =>
+      session.id === id ? { ...session, title } : session
+    ),
+  }))
+  return db.renameSession(id, title).then(
+    () => true,
+    (error: unknown) => {
+      // 写入失败回滚列表标题，避免界面显示一个实际未保存的名字
+      if (previous !== undefined) {
+        set((state) => ({
+          sessions: state.sessions.map((session) =>
+            session.id === id ? { ...session, title: previous } : session
+          ),
+        }))
+      }
+      db.reportStorageError('rename session')(error)
+      return false
+    }
+  )
 }
 
 /**

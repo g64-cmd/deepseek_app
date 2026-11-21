@@ -222,6 +222,7 @@ export const en = {
   voiceInputTooLong: 'Recording is too long. Please shorten it and try again.',
   voiceInputFailed: 'Speech recognition failed. Please try again later.',
   exitConfirmToast: 'Press back again to exit',
+  sessionRenameFailed: 'Rename failed. Please try again',
   voiceInputEmpty: 'No speech detected',
   voiceInputLimitReached: 'Maximum recording length reached',
   voiceInputRequiresHttps: 'Voice input requires HTTPS',
