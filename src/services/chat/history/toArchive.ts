@@ -23,7 +23,7 @@ const isoOrNull = (value: string | null) => {
   return Number.isFinite(ms) ? iso(ms) : null
 }
 
-const userFragments = (message: UserMessage, exportImage: ExportImage): Fragment[] => {
+const userFragments = (message: UserMessage, exportImage: ExportImage, extended: boolean): Fragment[] => {
   const files = message.files.map((file): FileEntry => {
     const isImage = file.isImage
     return {
@@ -36,6 +36,7 @@ const userFragments = (message: UserMessage, exportImage: ExportImage): Fragment
       is_image: isImage,
       width: null,
       height: null,
+      ...(extended ? { mime_type: file.mimeType } : {}),
     }
   })
   return [
@@ -226,7 +227,15 @@ const numberMessages = (messages: Message[]) => {
   return { ordered, ids }
 }
 
-export const toSessionFile = (original: Session, exportImage: ExportImage): SessionFile => {
+/**
+ * extended 为 true 时输出完整备份（v4）专有字段：回复的 model/effort/usage 与附件 MIME；
+ * 官方兼容格式（v3）保持精确的官方字段集，不携带自定义字段。
+ */
+export const toSessionFile = (
+  original: Session,
+  exportImage: ExportImage,
+  extended = false
+): SessionFile => {
   const session = normalizeSession(original)
   const { ordered, ids } = numberMessages(session.messages)
   const id = (message: Message) => ids.get(message.id) ?? fail('backupInvalidBranches')
@@ -243,7 +252,7 @@ export const toSessionFile = (original: Session, exportImage: ExportImage): Sess
       parent_id: message.parentId ? (ids.get(message.parentId) ?? null) : null,
     }
     const reply = message.role === 'assistant' ? message : firstReply.get(message.id)
-    return {
+    const entry: ChatMessage = {
       ...tree,
       role: message.role === 'user' ? 'USER' : 'ASSISTANT',
       status: message.role === 'user' ? 'FINISHED' : replyStatus(message),
@@ -252,8 +261,16 @@ export const toSessionFile = (original: Session, exportImage: ExportImage): Sess
       accumulated_token_usage: message.role === 'user' ? 0 : contextTokens(message),
       inserted_at: iso(message.createdAt),
       fragments:
-        message.role === 'user' ? userFragments(message, exportImage) : assistantFragments(message),
+        message.role === 'user'
+          ? userFragments(message, exportImage, extended)
+          : assistantFragments(message),
     }
+    if (extended && message.role === 'assistant') {
+      entry.model = message.model
+      entry.effort = message.effort ?? null
+      entry.usage = message.usage ?? null
+    }
+    return entry
   })
   const current = getVisibleMessages(session).at(-1)
   return {

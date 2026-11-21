@@ -432,8 +432,11 @@ const waitForIdle = (sessionId?: string) =>
 /**
  * 替换历史对话：先写入暂存，成功后原子替换旧记录；写入为空即删除全部会话与附件。
  * 期间停止生成并禁止修改会话；失败时清除暂存，保留原有记录。
+ * 返回提交后的会话数与 write 的结果（如完整备份携带的应用设置）。
  */
-export const replaceHistory = async (write: () => Promise<void>): Promise<number> => {
+export const replaceHistory = async <T>(
+  write: () => Promise<T>
+): Promise<{ result: T; count: number }> => {
   if (get().importingHistory) {
     throw new Error('History replacement is already in progress')
   }
@@ -450,8 +453,9 @@ export const replaceHistory = async (write: () => Promise<void>): Promise<number
     await waitForIdle()
     await db.clearStaging()
     let summaries: SessionSummary[]
+    let result: T
     try {
-      await write()
+      result = await write()
       summaries = await db.commitStaging()
     } catch (error) {
       await db.clearStaging().catch(db.reportStorageError('clear unfinished history replacement'))
@@ -470,7 +474,7 @@ export const replaceHistory = async (write: () => Promise<void>): Promise<number
       sessionSaveErrors: {},
       activeId: null,
     })
-    return summaries.length
+    return { result, count: summaries.length }
   } finally {
     set({ importingHistory: false })
     retrySaveSessions()

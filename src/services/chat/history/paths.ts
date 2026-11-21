@@ -1,13 +1,26 @@
-/** ZIP 条目名。条目顺序固定：manifest → user（可能缺失）→ 全部会话 JSON → index → 全部图片。 */
+/** ZIP 条目名。条目顺序固定：manifest → user（可能缺失）→ 全部会话 JSON → index → app_settings（仅完整备份）→ 全部附件。 */
 
 export const MANIFEST_PATH = 'manifest.json'
 export const USER_PATH = 'user.json'
 export const INDEX_PATH = 'chat_session_index.json'
+export const APP_SETTINGS_PATH = 'app_settings.json'
 
 export const sessionPath = (sessionId: string) => `chat_sessions/${sessionId}.json`
 
 /** 会话自己的图片目录，带结尾斜杠 */
 export const sessionFilesDir = (sessionId: string) => `chat_sessions/${sessionId}_files/`
+
+/** 完整备份的全部附件目录，带结尾斜杠 */
+export const fullFilesDir = 'files/'
+
+/** 完整备份的附件条目：files/{file_id}；文件 ID 已排除路径分隔符（本地生成的 UUID） */
+export const fullFilePath = (fileId: string) => `${fullFilesDir}${safeName(fileId)}`.normalize('NFC')
+
+/** files/ 目录下的文件 ID；其他条目返回 null */
+export const parseFullFilePath = (path: string): string | null =>
+  path.startsWith(fullFilesDir) && path.length > fullFilesDir.length
+    ? path.slice(fullFilesDir.length)
+    : null
 
 /** 会话 JSON 条目对应的会话 ID；其他条目返回 null */
 export const parseSessionPath = (path: string): string | null =>

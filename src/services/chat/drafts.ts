@@ -87,6 +87,20 @@ useDrafts.subscribe((state) => {
 export const getDraft = (sessionId: string | null): Draft =>
   useDrafts.getState().drafts.get(sessionId) ?? EMPTY_DRAFT
 
+/** 完整备份导出用：草稿文本原始表（会话 ID 为键，新对话为 'null'） */
+export const dumpDraftTexts = (): Record<string, string> => readDraftTexts()
+
+/** 完整备份导入用：整体替换草稿文本；setState 触发既有防抖落盘 */
+export const restoreDraftTexts = (texts: Record<string, string>) => {
+  const drafts = new Map<string | null, Draft>()
+  for (const [sessionId, text] of Object.entries(texts)) {
+    if (text) {
+      drafts.set(sessionId === 'null' ? null : sessionId, { text, attachments: [] })
+    }
+  }
+  useDrafts.setState({ drafts })
+}
+
 const updateDraft = (sessionId: string | null, update: (draft: Draft) => Draft) =>
   useDrafts.setState((state) => {
     const draft = update(state.drafts.get(sessionId) ?? EMPTY_DRAFT)

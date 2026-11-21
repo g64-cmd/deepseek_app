@@ -14,12 +14,12 @@ import type {
 } from '../types.js'
 import { fail } from './errors.js'
 import type { ChatMessage, FileEntry, Fragment, SessionFile } from './format.js'
-import { sessionFilesDir } from './paths.js'
+import { fullFilesDir, sessionFilesDir } from './paths.js'
 
 export type LocalSession = {
   session: Session
-  /** 本会话目录下应存在的图片：ZIP 条目名 → 文件 ID */
-  images: Map<string, string>
+  /** 需要从 ZIP 读取的附件原件：条目名 → 文件 ID 与 MIME（v4 非图片用元数据，图片留空待探测） */
+  images: Map<string, { id: string; mimeType: string }>
 }
 
 const time = (value: string) => Date.parse(value)
@@ -39,8 +39,8 @@ const toFile = (file: FileEntry): FileAttachment => ({
   name: file.file_name,
   size: file.file_size,
   isImage: file.is_image,
-  // 图片身份来自归档；原件随后从 ZIP 读取后补充具体 MIME。
-  mimeType: '',
+  // 图片身份来自归档；v3 图片 MIME 随后从原件字节探测，v4 直接还原元数据。
+  mimeType: file.mime_type ?? '',
 })
 
 const toUser = (message: ChatMessage): UserMessage => ({
@@ -224,7 +224,10 @@ const toAssistant = (message: ChatMessage): AssistantMessage => {
     id,
     role: 'assistant',
     createdAt: time(message.inserted_at),
-    model: null,
+    // v3 归档不记录模型；v4 完整备份原样还原（未知模型名原样保存，展示与请求兜底各自处理）
+    model: (message.model as AssistantMessage['model']) ?? null,
+    ...(message.effort ? { effort: message.effort as AssistantMessage['effort'] } : {}),
+    ...(message.usage ? { usage: message.usage } : {}),
     thinking: message.thinking_enabled,
     search: message.search_enabled,
     prefix: false,
@@ -278,7 +281,7 @@ const buildTree = (file: SessionFile): Pick<Session, 'messages' | 'rootMessageId
   return { messages, rootMessageId: current.id }
 }
 
-/** 转换单个会话，并列出本会话目录下需要从 ZIP 读取的图片。 */
+/** 转换单个会话，并列出需要从 ZIP 读取的附件原件（v3 本会话图片 / v4 全部附件）。 */
 export const toLocalSession = (file: SessionFile): LocalSession => {
   const session: Session = {
     id: file.id,
@@ -288,29 +291,28 @@ export const toLocalSession = (file: SessionFile): LocalSession => {
     updatedAt: time(file.updated_at),
     ...buildTree(file),
   }
-  const images = new Map<string, string>()
+  const images = new Map<string, { id: string; mimeType: string }>()
   for (const message of file.messages) {
     for (const item of message.fragments) {
       if (item.type !== 'FILE') {
         continue
       }
       for (const entry of item.files) {
-        if (!entry.is_image) {
-          continue
-        }
         // 读取端把条目名规范为 NFC，引用也按同样规则比较。
         const path = entry.export_path?.normalize('NFC')
         if (path === undefined) {
           continue
         }
-        // 图片只能在本会话目录下，同一条目不能对应不同文件。
+        const full = path.startsWith(fullFilesDir)
+        // v3 只有图片有原件且必须在本会话目录下；v4 全部附件在 files/ 目录。
+        // 同一条目不能对应不同文件。
         if (
-          !path.startsWith(sessionFilesDir(file.id)) ||
-          (images.get(path) ?? entry.id) !== entry.id
+          (!full && (!entry.is_image || !path.startsWith(sessionFilesDir(file.id)))) ||
+          (images.get(path) ?? { id: entry.id }).id !== entry.id
         ) {
           fail('backupInvalidFiles')
         }
-        images.set(path, entry.id)
+        images.set(path, { id: entry.id, mimeType: entry.mime_type ?? '' })
       }
     }
   }

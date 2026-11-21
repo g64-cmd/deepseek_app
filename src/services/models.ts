@@ -59,11 +59,18 @@ export const isChatModel = (value: string): value is ChatModel =>
 export const isEffortLevel = (value: string): value is EffortLevel =>
   value === 'low' || value === 'high' || value === 'max'
 
-export const supportsVision = (model: ChatModel): boolean => MODEL_METAS[model].vision
+/** 导入自完整备份的模型名可能不在静态表里（新版备份导入到旧版应用），调用方自行兜底 */
+export const getModelMeta = (model: string): ModelMeta | null =>
+  Object.hasOwn(MODEL_METAS, model) ? MODEL_METAS[model as ChatModel] : null
+
+/**
+ * 是否支持图片输入。未知模型按支持处理：请求交由服务端裁决，避免仅因静态表未更新而拦截。
+ */
+export const supportsVision = (model: string): boolean => getModelMeta(model)?.vision ?? true
 
 /**
  * 返回 model 不支持图片输入时 files 中的图片附件。
  * 文档附件不拦：PDF/Word 经 Files API 解析为文本输入（document 内容块），与视觉通道无关。
  */
-export const findBlockedImages = (model: ChatModel, files: FileAttachment[]): FileAttachment[] =>
+export const findBlockedImages = (model: string, files: FileAttachment[]): FileAttachment[] =>
   supportsVision(model) ? [] : files.filter((file) => file.isImage)

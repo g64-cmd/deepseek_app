@@ -53,12 +53,14 @@ export const setupPlatform = (): (() => void) | undefined => {
   }
   const cleanups: Array<() => void> = []
   let cancelled = false
-  void Promise.all([import('./backButton.js'), import('./externalLinks.js')]).then(
-    ([backButton, externalLinks]) => {
+  void Promise.all([import('./backButton.js'), import('./externalLinks.js'), import('./native.js')]).then(
+    ([backButton, externalLinks, native]) => {
       if (cancelled) {
         return
       }
       cleanups.push(backButton.registerBackButton(), externalLinks.delegateExternalAnchors())
+      // 清理历次导出残留在 cache 的备份文件（不阻塞启动）
+      void native.cleanupExportCache()
     }
   )
   return () => {

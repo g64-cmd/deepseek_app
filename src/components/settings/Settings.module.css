@@ -502,3 +502,11 @@
   line-height: 18px;
   color: var(--dsw-alias-state-error-primary);
 }
+
+/* 完整备份导入确认里的「先导出备份」入口 */
+.importConfirmActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}

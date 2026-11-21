@@ -1,12 +1,16 @@
 import { BackupError, fail } from './errors.js'
 import {
   EXPORT_FORMAT_VERSION,
+  FULL_FORMAT_VERSION,
+  type ArchiveKind,
+  type AppSettingsFile,
   type ChatMessage,
   type FileEntry,
   type Fragment,
   type SearchResult,
   type SessionFile,
   type SessionIndexEntry,
+  type TokenUsageEntry,
 } from './format.js'
 
 /**
@@ -96,6 +100,29 @@ const fileEntry: Read<FileEntry> = (value) => {
     is_image: boolean(item.is_image),
     width: nullable(count)(item.width),
     height: nullable(count)(item.height),
+    ...('mime_type' in item ? { mime_type: nullable(string)(item.mime_type) } : {}),
+  }
+}
+
+/** 完整备份（v4）专有的用量明细；存在时严格校验 */
+const tokenUsage: Read<TokenUsageEntry> = (value) => {
+  const item = record(value)
+  return {
+    input_tokens: count(item.input_tokens),
+    cache_creation_input_tokens: count(item.cache_creation_input_tokens),
+    cache_read_input_tokens: count(item.cache_read_input_tokens),
+    output_tokens: count(item.output_tokens),
+    ...('server_tool_use' in item
+      ? {
+          server_tool_use: (() => {
+            const tool = record(item.server_tool_use)
+            return {
+              web_search_requests: count(tool.web_search_requests),
+              tool_search: count(tool.tool_search),
+            }
+          })(),
+        }
+      : {}),
   }
 }
 
@@ -217,6 +244,10 @@ const message: Read<ChatMessage> = (value) => {
     accumulated_token_usage: count(item.accumulated_token_usage),
     inserted_at: time(item.inserted_at),
     fragments: list(fragment)(item.fragments).filter((item): item is Fragment => item !== null),
+    // 完整备份（v4）专有字段；官方 v3 产物没有这些字段
+    ...('model' in item ? { model: nullable(string)(item.model) } : {}),
+    ...('effort' in item ? { effort: nullable(string)(item.effort) } : {}),
+    ...('usage' in item ? { usage: nullable(tokenUsage)(item.usage) } : {}),
   }
 }
 
@@ -226,14 +257,56 @@ const sessionId: Read<string> = (value) => {
   return id && !/[/\\]/.test(id) && id !== '.' && id !== '..' ? id : invalid()
 }
 
-/** 版本号用于校验归档格式兼容性；字段结构由各字段的校验函数保证。 */
-export const checkManifest = (value: unknown): void => {
-  const version = record(value).export_format_version
-  if (typeof version === 'number' && version > EXPORT_FORMAT_VERSION) {
-    fail('backupNewerVersion')
+/**
+ * 版本号用于校验归档格式兼容性；字段结构由各字段的校验函数保证。
+ * v3（无 archive_kind）是官方兼容的历史格式；v4 且 archive_kind='full' 是本应用完整备份。
+ * 返回识别出的归档类型，供导入流程分流文案与设置恢复。
+ */
+export const checkManifest = (value: unknown): ArchiveKind => {
+  const item = record(value)
+  const version = item.export_format_version
+  if (typeof version === 'number' && Number.isInteger(version)) {
+    if (version > FULL_FORMAT_VERSION) {
+      return fail('backupNewerVersion')
+    }
+    if (version === FULL_FORMAT_VERSION) {
+      // 版本相同但不是本应用的完整备份（如官方将来发布 v4 历史格式），不能套用读取规则
+      return item.archive_kind === 'full' ? 'full' : fail('backupInvalidVersion')
+    }
+    if (version === EXPORT_FORMAT_VERSION) {
+      return 'legacy'
+    }
   }
-  if (version !== EXPORT_FORMAT_VERSION) {
-    fail('backupInvalidVersion')
+  return fail('backupInvalidVersion')
+}
+
+/** app_settings.json（仅完整备份）；整体损坏按无设置导入，不阻断会话恢复 */
+export const readAppSettings = (value: unknown): AppSettingsFile | null => {
+  try {
+    const item = record(value)
+    const settings = record(item.settings)
+    return {
+      schema: 1,
+      exported_at: time(item.exported_at),
+      settings: {
+        locale: string(settings.locale),
+        theme_preference: string(settings.theme_preference),
+        tts_voice: string(settings.tts_voice),
+        location: settings.location ?? null,
+        thinking: boolean(settings.thinking),
+        search: boolean(settings.search),
+        sider_collapsed: boolean(settings.sider_collapsed),
+        model: string(settings.model),
+        thinking_effort: string(settings.thinking_effort),
+      },
+      drafts: Object.fromEntries(
+        Object.entries(record(item.drafts)).filter(
+          (entry): entry is [string, string] => typeof entry[1] === 'string'
+        )
+      ),
+    }
+  } catch {
+    return null
   }
 }
 

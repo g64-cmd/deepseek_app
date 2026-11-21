@@ -11,8 +11,20 @@ export type Iso8601Utc = string
 
 export const EXPORT_FORMAT_VERSION = 3
 
-/** manifest.json，ZIP 的第一个条目 */
-export type Manifest = { export_format_version: typeof EXPORT_FORMAT_VERSION }
+/**
+ * 完整应用备份格式：在 v3 会话格式上增加每条回复的 model/effort/usage、
+ * 全部附件原件（files/ 目录，含非图片与 MIME）与应用设置（app_settings.json，不含 API Key）。
+ * manifest 以 archive_kind 区分；官方后续若发布 v4 历史格式，kind 不是 'full' 即不适用本格式。
+ */
+export const FULL_FORMAT_VERSION = 4
+
+export type ArchiveKind = 'legacy' | 'full'
+
+/** manifest.json，ZIP 的第一个条目；full 备份额外携带 archive_kind */
+export type Manifest = {
+  export_format_version: number
+  archive_kind?: 'full'
+}
 
 /** chat_session_index.json 的一项，只列出成功写出的会话；位于全部会话 JSON 之后、图片之前 */
 export type SessionIndexEntry = {
@@ -62,6 +74,21 @@ export type ChatMessage = {
   inserted_at: Iso8601Utc
   /** 按发生顺序排列 */
   fragments: Fragment[]
+  /** 完整备份（v4）专有：回复生成时的模型快照；assistant 消息可选 */
+  model?: string | null
+  /** 完整备份（v4）专有：思考强度快照 */
+  effort?: string | null
+  /** 完整备份（v4）专有：最近一次请求的用量明细 */
+  usage?: TokenUsageEntry | null
+}
+
+/** 完整备份里的每条回复用量，字段与本地 MessageUsage 一致 */
+export type TokenUsageEntry = {
+  input_tokens: number
+  cache_creation_input_tokens: number
+  cache_read_input_tokens: number
+  output_tokens: number
+  server_tool_use?: { web_search_requests: number; tool_search: number }
 }
 
 /** 用户的提问 */
@@ -167,6 +194,27 @@ export type FileEntry = {
   is_image: boolean
   width: number | null
   height: number | null
+  /** 完整备份（v4）专有：本地记录的 MIME，导入时直接还原 */
+  mime_type?: string | null
+}
+
+/** app_settings.json，仅完整备份携带；永不包含 API Key */
+export type AppSettingsFile = {
+  schema: 1
+  exported_at: Iso8601Utc
+  settings: {
+    locale: string
+    theme_preference: string
+    tts_voice: string
+    location: unknown
+    thinking: boolean
+    search: boolean
+    sider_collapsed: boolean
+    model: string
+    thinking_effort: string
+  }
+  /** 未发送的草稿文本：会话 ID（新对话为 'null'）→ 文本 */
+  drafts: Record<string, string>
 }
 
 /** 非图片文件只有元数据，本体不在产物里 */

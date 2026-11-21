@@ -144,7 +144,7 @@ export const AssistantMessage = memo(function AssistantMessage({
         <div className={styles.bottom}>
           {message.model ? (
             <span className={styles.modelBadge}>
-              {MODEL_METAS[message.model].shortName}
+              {MODEL_METAS[message.model]?.shortName ?? message.model}
               {message.effort === 'low' || message.effort === 'max'
                 ? ` · ${t(message.effort === 'low' ? 'effortLow' : 'effortMax')}`
                 : ''}

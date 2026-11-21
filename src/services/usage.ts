@@ -1,7 +1,7 @@
 import type { ChatModel, MessageUsage } from './api/types.js'
 import type { SessionSummary } from './chat/types.js'
 import * as db from './chat/db.js'
-import { MODEL_METAS } from './models.js'
+import { getModelMeta } from './models.js'
 
 const CACHE_KEY = 'chat-demo:usage-summary'
 /** 搜索/抓取计费（元/千次，来源：docs/deepseek-api 快照 quick_start/pricing.md） */
@@ -74,7 +74,12 @@ export const estimateCostRange = (summary: UsageSummary): { min: number; max: nu
     if (!usage) {
       continue
     }
-    const pricing = MODEL_METAS[id as ChatModel].pricing
+    // 静态表之外的模型（导入自新版备份）无法估算单价，token 照常展示
+    const meta = getModelMeta(id)
+    if (!meta) {
+      continue
+    }
+    const pricing = meta.pricing
     min +=
       (usage.input * pricing.cacheMiss[0] +
         usage.cacheRead * pricing.cacheRead[0] +

@@ -142,15 +142,24 @@ export const en = {
     'The uploaded chat history will replace all your current chats. Import anyway?',
   historyImportDescription:
     'Importing chat history replaces all local chats and attachments. Supports ZIP files exported from DeepSeek.',
+  historyImportFullConfirmDescription:
+    'A full backup replaces all local chats, attachments and app settings (except the API key). This cannot be undone. Export your current data first.',
   historyImportedOne: 'Imported 1 chat',
   historyImported: 'Imported {count} chats',
+  historyImportedFullOne: 'Imported 1 chat and restored app settings and drafts',
+  historyImportedFull: 'Imported {count} chats and restored app settings and drafts',
   historyImportFailed:
     'File import failed. The file format may be invalid, or the ZIP file may use an older chat export format. Please export your chat history from DeepSeek again and retry the import.',
   historyExportFailed: 'Export failed: {message}',
   exportAllLabel: 'Export all chats',
   historyExportDescription:
-    'Includes all chat history and locally stored images. Other attachments retain file details only. Your API Key is not included.',
+    'Format compatible with the official DeepSeek App: includes all chats and locally stored images. Other attachments retain file details only. Your API Key is not included.',
   exportAllDownload: 'Download',
+  backupFullExport: 'Full backup',
+  backupFullExportDescription:
+    'Includes all chats, attachment originals, app settings and drafts (no API key). Restores into this app only; for device migration or full recovery.',
+  backupFullDownload: 'Back up',
+  backupFirst: 'Export backup first',
   deleteAllSessions: 'Delete all chats',
   deleteAllSessionsModalTitle: 'Once deleted, all chats will be cleared and cannot be recovered.',
   deleteAllSessionsModalDescription:

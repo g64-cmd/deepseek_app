@@ -14,6 +14,51 @@ const blobToBase64 = (blob: Blob) =>
     reader.readAsDataURL(blob)
   })
 
+/** 分块大小与单次写入阈值（字节）：小文件一次写完，大文件分块追加，压低 base64 过桥内存峰值 */
+const WRITE_CHUNK = 4 * 1024 * 1024
+const SINGLE_WRITE_LIMIT = 8 * 1024 * 1024
+
+/** 分块写入 cache 目录：首块 writeFile、后续 appendFile（不传 encoding 按二进制追加） */
+const writeBlobToCache = async (name: string, blob: Blob): Promise<string> => {
+  if (blob.size <= SINGLE_WRITE_LIMIT) {
+    const { uri } = await Filesystem.writeFile({
+      path: name,
+      data: await blobToBase64(blob),
+      directory: Directory.Cache,
+    })
+    return uri
+  }
+  let uri = ''
+  for (let offset = 0; offset < blob.size; offset += WRITE_CHUNK) {
+    const chunk = blob.slice(offset, offset + WRITE_CHUNK)
+    const data = await blobToBase64(chunk)
+    if (offset === 0) {
+      uri = (await Filesystem.writeFile({ path: name, data, directory: Directory.Cache })).uri
+    } else {
+      await Filesystem.appendFile({ path: name, data, directory: Directory.Cache })
+    }
+  }
+  return uri
+}
+
+/**
+ * 启动时清理历次导出残留在 cache 目录的备份文件。不在分享结束后立刻删：
+ * 「保存到文件」的 SAF 读取完成时机不可知，立即删除可能截断保存；启动时上一次
+ * 会话的导出必然不再被引用。全部容错，清理失败不影响使用。
+ */
+export const cleanupExportCache = async (): Promise<void> => {
+  try {
+    const { files } = await Filesystem.readdir({ path: '', directory: Directory.Cache })
+    for (const file of files) {
+      if (/^(deepseek_data-|whalechat-backup-)/.test(file.name)) {
+        await Filesystem.deleteFile({ path: file.name, directory: Directory.Cache }).catch(() => {})
+      }
+    }
+  } catch {
+    // cache 目录不可读时跳过清理
+  }
+}
+
 /**
  * 通过隐藏锚点触发导航：外域 http(s) 由 Capacitor 的 shouldOverrideUrlLoading
  * 转交系统浏览器（Bridge.launchIntent）。WebView 未实现 onCreateWindow，
@@ -45,12 +90,7 @@ export const nativePlatform: PlatformAdapter = {
     navigateToExternal(url)
   },
   async saveOrShareFile(name: string, blob: Blob): Promise<SaveFileResult> {
-    const base64 = await blobToBase64(blob)
-    const { uri } = await Filesystem.writeFile({
-      path: name,
-      data: base64,
-      directory: Directory.Cache,
-    })
+    const uri = await writeBlobToCache(name, blob)
     try {
       await Share.share({ title: name, dialogTitle: name, url: uri })
     } catch (error) {

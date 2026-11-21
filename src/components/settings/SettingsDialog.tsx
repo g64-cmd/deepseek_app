@@ -12,10 +12,13 @@ import {
 } from '../base/icons.js'
 import {
   BackupError,
+  checkArchiveKind,
   clearHistory,
+  exportFullBackup,
   exportHistory,
   importHistory,
 } from '../../services/chat/backup.js'
+import type { ArchiveKind } from '../../services/chat/history/format.js'
 import { useIsMobile } from '../../app/viewport.js'
 import { platform } from '../../platform/index.js'
 import { useChatStore } from '../../services/chat/store.js'
@@ -121,6 +124,7 @@ const SettingsContent = () => {
               <ApiKeyField editor={apiKeyEditor} />
               <ImportHistory historyImport={historyImport} disabled={historyBusy} />
               <ExportHistory disabled={historyBusy} />
+              <ExportFullBackup disabled={historyBusy} />
               <SettingCell
                 label={t('deleteAllSessions')}
                 status={null}
@@ -379,13 +383,14 @@ const ThinkingEffortSetting = () => {
   )
 }
 
-/** 覆盖导入的二次确认，叠在设置弹窗上 */
+/** 覆盖导入的二次确认，叠在设置弹窗上；完整备份额外提供「先导出备份」入口 */
 const ImportConfirm = ({
   historyImport,
 }: {
   historyImport: ReturnType<typeof useHistoryImport>
 }) => {
   const t = useTranslate()
+  const full = historyImport.kind === 'full'
   return (
     <Modal
       title={t('historyImportConfirmTitle')}
@@ -402,8 +407,47 @@ const ImportConfirm = ({
         </>
       }
     >
-      <div className={styles.importConfirmText}>{t('historyImportConfirmDescription')}</div>
+      <div className={styles.importConfirmText}>
+        {t(full ? 'historyImportFullConfirmDescription' : 'historyImportConfirmDescription')}
+      </div>
+      {full ? <ExportBackupFirst /> : null}
     </Modal>
+  )
+}
+
+/** 完整备份导入确认里的「先导出备份」：走导出链路（分享面板存盘），不关闭确认弹窗 */
+const ExportBackupFirst = () => {
+  const t = useTranslate()
+  const [busy, setBusy] = useState(false)
+  const [failed, setFailed] = useState(false)
+  return (
+    <div className={styles.importConfirmActions}>
+      <Button
+        variant="outlined"
+        size="s"
+        disabled={busy}
+        onClick={() => {
+          setBusy(true)
+          setFailed(false)
+          exportFullBackup()
+            .then(({ name, blob }) => platform.saveOrShareFile(name, blob))
+            .then(() => {
+              // 用户收起分享面板视为取消，同样不算失败
+            })
+            .catch(() => {
+              setFailed(true)
+            })
+            .finally(() => {
+              setBusy(false)
+            })
+        }}
+      >
+        {t('backupFirst')}
+      </Button>
+      {failed ? (
+        <span className={clsx(styles.description, styles.error)}>{t('historyExportFailed', { message: '' })}</span>
+      ) : null}
+    </div>
   )
 }
 
@@ -504,9 +548,27 @@ const SettingCell = ({
 /** 选文件后先提示覆盖；确认后才检查文件并执行导入，任何错误都提示导入失败。 */
 const useHistoryImport = () => {
   const [file, setFile] = useState<File | null>(null)
+  const [kind, setKind] = useState<ArchiveKind>('legacy')
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState<Status>(null)
   const importing = useRef(false)
+
+  /** 选中文件即校验格式并识别归档类型，确认弹窗据此区分兼容格式与完整备份 */
+  const select = (selected: File) => {
+    setStatus(null)
+    setBusy(true)
+    checkArchiveKind(selected)
+      .then((kind) => {
+        setFile(selected)
+        setKind(kind)
+      })
+      .catch((error) => {
+        setStatus(errorStatus('historyImportFailed', error))
+      })
+      .finally(() => {
+        setBusy(false)
+      })
+  }
 
   const confirm = async () => {
     if (!file || importing.current) {
@@ -517,8 +579,18 @@ const useHistoryImport = () => {
     setBusy(true)
     setStatus(null)
     try {
-      const count = await importHistory(file)
-      setStatus({ key: count === 1 ? 'historyImportedOne' : 'historyImported', params: { count } })
+      const { count, restoredSettings } = await importHistory(file)
+      setStatus({
+        key:
+          restoredSettings
+            ? count === 1
+              ? 'historyImportedFullOne'
+              : 'historyImportedFull'
+            : count === 1
+              ? 'historyImportedOne'
+              : 'historyImported',
+        params: { count },
+      })
     } catch {
       setStatus({ key: 'historyImportFailed', error: true })
     } finally {
@@ -527,7 +599,7 @@ const useHistoryImport = () => {
     }
   }
 
-  return { file, busy, status, select: setFile, cancel: () => setFile(null), confirm }
+  return { file, kind, busy, status, select, cancel: () => setFile(null), confirm }
 }
 
 /** 导入 = 覆盖：用选中文件替换本地全部会话与附件。 */
@@ -577,44 +649,79 @@ const ImportHistory = ({
   )
 }
 
-/** 将全部会话及图片导出为 ZIP 文件并下载 */
-const ExportHistory = ({ disabled }: { disabled: boolean }) => {
-  const t = useTranslate()
-  const empty = useChatStore((state) => state.sessions.length === 0)
+/** 导出类操作的公共单元：按钮触发导出并经平台保存/分享 */
+const ExportCell = ({
+  label,
+  description,
+  actionLabel,
+  disabled,
+  run,
+}: {
+  label: string
+  description: string
+  actionLabel: string
+  disabled: boolean
+  run: () => Promise<{ name: string; blob: Blob }>
+}) => {
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState<Status>(null)
-
-  const onExport = async () => {
-    setBusy(true)
-    setStatus(null)
-    try {
-      const { name, blob } = await exportHistory()
-      // Web 触发浏览器下载；Android 拉起系统分享面板（用户收起面板视为取消，不算失败）
-      await platform.saveOrShareFile(name, blob)
-    } catch (error) {
-      setStatus(errorStatus('historyExportFailed', error))
-    } finally {
-      setBusy(false)
-    }
-  }
-
   return (
     <SettingCell
-      label={t('exportAllLabel')}
-      description={t('historyExportDescription')}
+      label={label}
+      description={description}
       status={status}
       action={
         <Button
           variant="outlined"
           size="m"
           className={styles.cellButton}
-          disabled={disabled || busy || empty}
-          onClick={() => void onExport()}
+          disabled={disabled || busy}
+          onClick={() => {
+            setBusy(true)
+            setStatus(null)
+            run()
+              .then(({ name, blob }) => platform.saveOrShareFile(name, blob))
+              .catch((error) => {
+                setStatus(errorStatus('historyExportFailed', error))
+              })
+              .finally(() => {
+                setBusy(false)
+              })
+          }}
         >
           <IconDownloadOutline16 />
-          {t('exportAllDownload')}
+          {actionLabel}
         </Button>
       }
+    />
+  )
+}
+
+/** 兼容官方 App 的历史导出；全部会话与本地图片原件（无会话时禁用） */
+const ExportHistory = ({ disabled }: { disabled: boolean }) => {
+  const t = useTranslate()
+  const empty = useChatStore((state) => state.sessions.length === 0)
+  return (
+    <ExportCell
+      label={t('exportAllLabel')}
+      description={t('historyExportDescription')}
+      actionLabel={t('exportAllDownload')}
+      disabled={disabled || empty}
+      run={exportHistory}
+    />
+  )
+}
+
+/** 完整应用备份：会话（含用量与模型快照）、全部附件原件、设置与草稿；不含 API Key */
+const ExportFullBackup = ({ disabled }: { disabled: boolean }) => {
+  const t = useTranslate()
+  return (
+    <ExportCell
+      label={t('backupFullExport')}
+      description={t('backupFullExportDescription')}
+      actionLabel={t('backupFullDownload')}
+      disabled={disabled}
+      run={exportFullBackup}
     />
   )
 }

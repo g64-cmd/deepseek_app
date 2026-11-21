@@ -135,15 +135,24 @@ export const zh = {
   historyImportConfirmTitle: '确认导入历史对话？',
   historyImportConfirmDescription: '上传的历史对话会覆盖当前所有对话记录，是否确认导入？',
   historyImportDescription: '导入历史对话会覆盖全部本地对话和附件，支持 DeepSeek 导出的 ZIP 文件。',
+  historyImportFullConfirmDescription:
+    '完整备份将替换本机全部会话、附件与应用设置（API Key 除外），操作不可撤销。建议先导出当前数据。',
   historyImportedOne: '已导入 1 个对话',
   historyImported: '已导入 {count} 个对话',
+  historyImportedFullOne: '已导入 1 个对话，并恢复应用设置与草稿',
+  historyImportedFull: '已导入 {count} 个对话，并恢复应用设置与草稿',
   historyImportFailed:
     '文件导入失败，可能是文件格式错误或使用了旧版的对话导出 ZIP 文件，请前往 DeepSeek 重新导出历史对话文件后再次导入。',
   historyExportFailed: '导出失败：{message}',
   exportAllLabel: '导出所有历史对话',
   historyExportDescription:
-    '包含所有历史对话及本地图片原件；其他附件仅保留文件信息，不包含 API Key。',
+    '兼容 DeepSeek 官方 App 的导出格式：包含所有历史对话与本地图片原件；其他附件仅保留文件信息，不包含 API Key。',
   exportAllDownload: '下载',
+  backupFullExport: '完整备份',
+  backupFullExportDescription:
+    '包含全部会话、附件原件、应用设置与草稿（不含 API Key），仅限本应用导入；用于换机或整体恢复。',
+  backupFullDownload: '备份',
+  backupFirst: '先导出备份',
   deleteAllSessions: '删除所有对话',
   deleteAllSessionsModalTitle: '删除后，所有对话都将被清空且无法找回',
   deleteAllSessionsModalDescription: '本地保存的附件及未发送的草稿也将被删除。',
