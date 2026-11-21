@@ -23,7 +23,7 @@ export const ImageViewer = ({ file, onClose }: { file: { id: string; name: strin
   const [blob, setBlob] = useState<Blob | null>(null)
   const [sharing, setSharing] = useState(false)
   const [zoom, setZoom] = useState({ scale: 1, x: 0, y: 0 })
-  const containerRef = useRef<HTMLDivElement>(null)
+  const imageRef = useRef<HTMLImageElement>(null)
   const dragRef = useRef<{ pointer: number; startX: number; startY: number; originX: number; originY: number } | null>(null)
 
   // 与缩略图各自独立地建立 objectUrl，卸载各自 revoke
@@ -66,7 +66,9 @@ export const ImageViewer = ({ file, onClose }: { file: { id: string; name: strin
 
   const toggleZoom = (clientX: number, clientY: number) => {
     if (zoom.scale === 1) {
-      const rect = containerRef.current?.getBoundingClientRect()
+      // transform-origin 相对图片自身；1x 时图片无变换，边界即未缩放位置。
+      // 不能用遮罩坐标：图片在 header/footer 之间的 stage 中居中，两套坐标系有偏移。
+      const rect = imageRef.current?.getBoundingClientRect()
       setZoom({
         scale: ZOOM_SCALE,
         x: rect ? clientX - rect.left : 0,
@@ -79,7 +81,6 @@ export const ImageViewer = ({ file, onClose }: { file: { id: string; name: strin
 
   return createPortal(
     <div
-      ref={containerRef}
       className={styles.overlay}
       onClick={(event) => {
         if (event.target === event.currentTarget) {
@@ -99,6 +100,7 @@ export const ImageViewer = ({ file, onClose }: { file: { id: string; name: strin
       <div className={styles.stage}>
         {url ? (
           <img
+            ref={imageRef}
             src={url}
             alt={file.name}
             className={styles.image}

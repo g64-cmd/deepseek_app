@@ -11,6 +11,7 @@ import {
 import { cancelUpload, describeUploadError, uploadAttachment, useUploads } from '../attachments.js'
 import { markBalanceStale } from '../balance.js'
 import { supportsVision } from '../models.js'
+import { bumpUsageRevision } from '../usage.js'
 import { useSettings } from '../settings.js'
 import { appendBranch, getVisibleMessages, normalizeSession, selectVersion } from './branches.js'
 import * as db from './db.js'
@@ -307,12 +308,6 @@ export const countContextImages = (sessionId: string | null): number => {
   return count
 }
 
-/** dropHistoryImages 时把上下文历史 user 消息里的图片附件剔除（文档附件保留） */
-const stripHistoryImages = (message: Message): Message =>
-  message.role === 'user'
-    ? { ...message, files: message.files.filter((file) => !file.isImage) }
-    : message
-
 /** 仍在生成中的回复（页面关闭或导出时未结束）按「已停止」处理 */
 const settleInterrupted = (session: Session): Session => {
   if (
@@ -474,6 +469,8 @@ export const replaceHistory = async <T>(
       sessionSaveErrors: {},
       activeId: null,
     })
+    // 导入/清空替换了全部会话；数量与最近更新时间可能碰巧不变，靠修订号使用量缓存失效
+    bumpUsageRevision()
     return { result, count: summaries.length }
   } finally {
     set({ importingHistory: false })
@@ -586,6 +583,7 @@ const removeSessionData = async (id: string): Promise<boolean> => {
       ),
       activeId: state.activeId === id ? null : state.activeId,
     }))
+    bumpUsageRevision()
     return true
   } catch (error) {
     db.reportStorageError('delete session')(error)
@@ -850,6 +848,18 @@ type Request = {
   dropHistoryImages?: boolean
 }
 
+/** dropHistoryImages 时剔除上下文历史 user 消息里的图片附件（文档附件保留） */
+const stripHistoryImages = (message: Message): Message =>
+  message.role === 'user'
+    ? { ...message, files: message.files.filter((file) => !file.isImage) }
+    : message
+
+/** 请求级图片剔除策略：任何从会话重新取回消息的位置（刷新、补齐后回读）都必须再次应用 */
+const stripRequest = (request: Request): Request =>
+  request.dropHistoryImages
+    ? { ...request, history: request.history.map(stripHistoryImages) }
+    : request
+
 /** 把补传得到的 serverId 写回会话里所有引用同一附件的消息（编辑、重新生成会共用附件） */
 const saveServerIds = (sessionId: string, serverIds: Map<string, string>) => {
   if (serverIds.size === 0) {
@@ -890,7 +900,8 @@ const ensureServerId = async (apiKey: string, file: FileAttachment): Promise<str
   return uploadAttachment(apiKey, file.id, blob, file.name, file.isImage)
 }
 
-/** 用会话里的最新消息替换请求快照：重传前会重置附件的 serverId，快照必须跟着更新 */
+/** 用会话里的最新消息替换请求快照：重传前会重置附件的 serverId，快照必须跟着更新。
+ * 从会话取回的是原始消息，图片剔除策略在这里重新应用。 */
 const refreshRequest = (sessionId: string, request: Request): Request => {
   const session = getSession(sessionId)
   if (!session) {
@@ -899,11 +910,12 @@ const refreshRequest = (sessionId: string, request: Request): Request => {
   const byId = new Map(session.messages.map((message) => [message.id, message]))
   const pick = <T extends Message>(message: T): T =>
     (byId.get(message.id) as T | undefined) ?? message
-  return {
+  return stripRequest({
     history: request.history.map(pick),
     question: pick(request.question),
     prefix: request.prefix,
-  }
+    dropHistoryImages: request.dropHistoryImages,
+  })
 }
 
 /**
@@ -915,7 +927,7 @@ const refreshRequest = (sessionId: string, request: Request): Request => {
 const prepareFiles = async (sessionId: string, request: Request, signal: AbortSignal) => {
   const epoch = historyEpoch
   // 服务端判定 file_id 失效时会清掉会话里的 serverId，先用最新消息替换请求快照，
-  // 否则快照里仍是旧 id，补传会直接复用它。
+  // 否则快照里仍是旧 id，补传会直接复用它。替换回的是会话原始消息，图片剔除重新应用。
   request = refreshRequest(sessionId, request)
   const apiKey = useSettings.getState().apiKey ?? ''
   const serverIds = new Map<string, string>()
@@ -963,15 +975,17 @@ const prepareFiles = async (sessionId: string, request: Request, signal: AbortSi
     }
   }
 
-  // 用补齐后的会话重新取历史与提问，保证请求里都是 serverId
+  // 用补齐后的会话重新取历史与提问，保证请求里都是 serverId；
+  // resolve 同样取回会话原始消息（附件的 serverId 是新的），图片剔除再次应用
   const session = getSession(sessionId)
   const resolve = <T extends Message>(message: T): T =>
     (session?.messages.find((m) => m.id === message.id) as T | undefined) ?? message
-  return {
+  return stripRequest({
     history: request.history.map(resolve),
     question: resolve(request.question),
     prefix: request.prefix,
-  }
+    dropHistoryImages: request.dropHistoryImages,
+  })
 }
 
 /** 本次请求实际会用到的服务端 file_id */
@@ -1059,10 +1073,6 @@ const waitForRetry = (attempt: number, signal: AbortSignal) =>
  * 服务端判定 file_id 失效时重新补传后重发，退避重试且次数有上限，超过则按原始报错收尾。
  */
 const streamReply = async (sessionId: string, initial: AssistantMessage, request: Request) => {
-  // 进入补传/组装前先剔除历史图片，保证后续 refreshRequest、补传与重试都基于同一份快照
-  if (request.dropHistoryImages) {
-    request = { ...request, history: request.history.map(stripHistoryImages) }
-  }
   const controller = new AbortController()
   if (!getSession(sessionId)?.title) {
     titleRequests.add(controller)
@@ -1200,5 +1210,7 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
       ),
     }))
     persist(sessionId)
+    // 本轮流式可能落盘了新的 usage；列表元数据不变，靠修订号使用量缓存失效
+    bumpUsageRevision()
   }
 }

@@ -50,8 +50,13 @@ const writeCache = (data: UserBalance, fetchedAt: number) => {
   }
 }
 
+/** 请求代次：每次刷新与缓存清理递增，过期请求的结果被丢弃 */
+let requestEpoch = 0
+
 const clearCache = () => {
-  useBalance.setState({ data: null, fetchedAt: null, error: null })
+  // 使在途的旧账户请求全部作废：换 Key 后回来的响应不得写入新账户的状态
+  requestEpoch += 1
+  useBalance.setState({ data: null, fetchedAt: null, error: null, loading: false })
   try {
     localStorage.removeItem(CACHE_KEY)
   } catch {
@@ -83,13 +88,21 @@ export const refreshBalance = async (): Promise<void> => {
   if (!apiKey) {
     return
   }
+  const epoch = ++requestEpoch
   useBalance.setState({ loading: true })
   try {
     const data = await fetchBalance(apiKey)
+    if (epoch !== requestEpoch) {
+      // 等待期间已换 Key 或发起新请求，旧账户的结果不再写入
+      return
+    }
     const fetchedAt = Date.now()
     writeCache(data, fetchedAt)
     useBalance.setState({ data, fetchedAt, loading: false, error: null })
   } catch (error) {
+    if (epoch !== requestEpoch) {
+      return
+    }
     const reason =
       error instanceof ApiError
         ? error.status === 401

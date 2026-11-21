@@ -35,7 +35,8 @@ export const exportArchive = async (
     ? { export_format_version: FULL_FORMAT_VERSION, archive_kind: 'full' }
     : { export_format_version: EXPORT_FORMAT_VERSION }
   const entries = [{ name: MANIFEST_PATH, blob: json(manifest) }]
-  const fileEntries: { name: string; blob: Blob }[] = []
+  // 条目按最终路径全局去重：v4 的 files/{id} 会被多个会话共享引用，v3 路径含会话 ID 天然互异
+  const fileEntries = new Map<string, Blob>()
   const index: SessionIndexEntry[] = []
   const originals = new Map<string, Blob | undefined>()
   for await (const session of sessions) {
@@ -49,7 +50,6 @@ export const exportArchive = async (
         }
       }
     }
-    const files = new Map<string, Blob>()
     const data = toSessionFile(
       session,
       ({ id, name, isImage }) => {
@@ -58,20 +58,20 @@ export const exportArchive = async (
           return null
         }
         const path = full ? fullFilePath(id) : imagePath(session.id, id, name)
-        files.set(path, blob)
+        fileEntries.set(path, blob)
         return path
       },
       full
     )
     entries.push({ name: sessionPath(session.id), blob: json(data) })
-    for (const [name, blob] of files) {
-      fileEntries.push({ name, blob })
-    }
     index.push(toIndexEntry(data))
   }
   entries.push({ name: INDEX_PATH, blob: json(index) })
   if (full && options?.appSettings) {
     entries.push({ name: APP_SETTINGS_PATH, blob: json(options.appSettings) })
   }
-  return writeArchive(entries.concat(fileEntries))
+  return writeArchive([
+    ...entries,
+    ...[...fileEntries].map(([name, blob]) => ({ name, blob })),
+  ])
 }

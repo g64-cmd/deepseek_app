@@ -13,7 +13,7 @@
     "apk:install": "adb install -r android/app/build/outputs/apk/debug/app-debug.apk",
     "type": "tsc -p tsconfig.json",
     "lint": "oxlint src rspack.config.ts",
-    "test": "node --test tests/review/platform-regressions.test.mjs tests/review/model-guard.test.mjs",
+    "test": "node --test tests/review/platform-regressions.test.mjs tests/review/model-guard.test.mjs tests/review/chat-regressions.test.mjs",
     "format": "oxfmt --write ."
   },
   "dependencies": {

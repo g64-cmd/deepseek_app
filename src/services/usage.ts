@@ -97,9 +97,34 @@ export const estimateCostRange = (summary: UsageSummary): { min: number; max: nu
   return { min, max }
 }
 
-/** 会话数量与最近更新时间共同构成数据签名：新回复、导入、删除都会改变签名触发重算 */
+/** 用量数据修订号的持久 key：流式完成落盘、导入/清空/删除会话后递增 */
+const REVISION_KEY = 'chat-demo:usage-revision'
+
+const readRevision = (): number => {
+  try {
+    const value = Number(localStorage.getItem(REVISION_KEY))
+    return Number.isSafeInteger(value) && value >= 0 ? value : 0
+  } catch {
+    return 0
+  }
+}
+
+/**
+ * 递增用量数据修订号，使缓存签名失效。
+ * 流式结束只保存回复的 usage，不改会话列表元数据——签名若只看会话数与最近更新时间
+ * 会漏掉这次变化（生成中途打开面板缓存的旧值在回答完成后仍然命中）。
+ */
+export const bumpUsageRevision = () => {
+  try {
+    localStorage.setItem(REVISION_KEY, String(readRevision() + 1))
+  } catch {
+    // 存储不可用时缓存写入同样失败，每次都会重算
+  }
+}
+
+/** 修订号、会话数量与最近更新时间共同构成数据签名：生成完成、导入、删除都触发重算 */
 const signatureOf = (summaries: SessionSummary[]): string =>
-  `${summaries.length}:${summaries.reduce((max, item) => Math.max(max, item.updatedAt), 0)}`
+  `${readRevision()}:${summaries.length}:${summaries.reduce((max, item) => Math.max(max, item.updatedAt), 0)}`
 
 const readCache = (): { signature: string; summary: UsageSummary } | null => {
   try {
