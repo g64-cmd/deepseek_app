@@ -210,6 +210,7 @@ export const zh = {
   voiceInputNoDevice: '未检测到麦克风',
   voiceInputTooLong: '录音过长，请缩短后重试',
   voiceInputFailed: '语音识别失败，请稍后再试',
+  exitConfirmToast: '再按一次返回键退出',
   voiceInputEmpty: '未识别到语音内容',
   voiceInputLimitReached: '已达到单次录音时长上限',
   voiceInputRequiresHttps: '非 HTTPS 页面无法使用语音输入',
