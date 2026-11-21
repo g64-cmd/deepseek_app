@@ -6,11 +6,13 @@ import { fileURLToPath } from 'node:url'
 import { rspack } from '@rspack/core'
 
 /**
- * 阶段 B review（tmp/develop-review-phase-b-5aa1594.md）检出的 4 个回归：
+ * 阶段 B review（tmp/develop-review-phase-b-5aa1594.md、tmp/develop-review-phase-b-5a491e8.md）
+ * 检出的 5 个回归：
  * 1) dropHistoryImages 在附件准备阶段被 refreshRequest 恢复历史图片；
  * 2) 跨会话共享附件使 v4 完整备份生成重复 ZIP 条目；
  * 3) 生成期间缓存的用量在回答完成后不失效；
- * 4) 换 Key 后旧余额请求写入新账户缓存。
+ * 4) 换 Key 后旧余额请求写入新账户缓存；
+ * 5) 最终保存失败后重试成功，仍沿用旧用量缓存（修订号需挂在保存成功路径）。
  * 编译真实聊天服务模块，仅替换 IndexedDB / Keystore / 翻译，fetch 由用例接管。
  */
 const root = fileURLToPath(new URL('../../', import.meta.url))
@@ -253,4 +255,77 @@ test('usage cached during generation is recomputed after the same reply complete
   const uncached = await api.getUsageSummary()
   assert.equal(uncached.models['deepseek-flash']?.output, 10, 'control: scanning the same persisted data without the stale cache is correct')
   assert.equal(completed.models['deepseek-flash']?.output, 10, 'reopening the account panel must include the completed response')
+})
+
+test('usage cache is invalidated when saving a completed response succeeds on retry', async () => {
+  localStorage.clear()
+  api.runtime.sessions.clear()
+  const id = 'save-retry-session'
+  const empty = {
+    id,
+    title: id,
+    createdAt: 1_700_000_000_000,
+    updatedAt: 1_700_000_000_000,
+    messages: [],
+  }
+  api.useChatStore.setState({
+    ready: true,
+    importingHistory: false,
+    sessions: [empty],
+    sessionCache: { [id]: empty },
+    streaming: {},
+    activeId: id,
+    sessionSaveErrors: {},
+  })
+  api.setModel('deepseek-flash')
+  api.setDraftText(id, 'A harmless save retry fixture')
+  const usage = { input_tokens: 20, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, output_tokens: 10 }
+  const events = [
+    { type: 'message_start', message: { usage } },
+    { type: 'content_block_start', index: 0, content_block: { type: 'text', text: 'A harmless answer.' } },
+    { type: 'content_block_stop', index: 0 },
+    { type: 'message_delta', delta: { stop_reason: 'end_turn' }, usage },
+    { type: 'message_stop' },
+  ]
+  globalThis.fetch = async () =>
+    new Response(events.map((event) => `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`).join(''), {
+      headers: { 'Content-Type': 'text/event-stream' },
+    })
+  // 注入最终保存失败：流式完成后的 persist 落盘被拒，数据库保留旧 pending 快照
+  api.runtime.rejectCompletedSave = true
+  assert.equal(api.sendMessage(id), true)
+  for (let i = 0; i < 100 && !api.useChatStore.getState().sessionSaveErrors[id]; i++) {
+    await new Promise((resolve) => setImmediate(resolve))
+  }
+  assert.equal(api.useChatStore.getState().sessionSaveErrors[id], true, 'the production store exposes the failed transaction')
+  assert.equal(
+    api.useChatStore.getState().sessionCache[id].messages.at(-1).usage.output_tokens,
+    10,
+    'the in-memory response is retained'
+  )
+  // 失败期间打开面板：聚合数据库旧快照。修订号未递增，缓存与旧数据保持一致（非污染）
+  const beforeRetry = await api.getUsageSummary()
+  assert.equal(beforeRetry.replies, 0, 'failed transaction leaves the previous pending snapshot in storage')
+  const revisionBeforeRetry = localStorage.getItem('chat-demo:usage-revision')
+  // 存储恢复后重试保存（真实 UI 的保存失败提示重试入口）
+  api.runtime.rejectCompletedSave = false
+  api.retrySaveSessions()
+  for (let i = 0; i < 100 && api.useChatStore.getState().sessionSaveErrors[id]; i++) {
+    await new Promise((resolve) => setImmediate(resolve))
+  }
+  assert.equal(api.useChatStore.getState().sessionSaveErrors[id], undefined, 'the save error clears after successful retry')
+  assert.equal(
+    api.runtime.sessions.get(id).messages.at(-1).usage.output_tokens,
+    10,
+    'the retry has committed the completed usage'
+  )
+  const completed = await api.getUsageSummary()
+  localStorage.removeItem('chat-demo:usage-summary')
+  const uncached = await api.getUsageSummary()
+  assert.equal(uncached.models['deepseek-flash']?.output, 10, 'control: fresh aggregation reads the committed usage correctly')
+  assert.equal(
+    completed.models['deepseek-flash']?.output,
+    10,
+    `successful retry must invalidate cached usage; revision before=${revisionBeforeRetry}, after=${localStorage.getItem('chat-demo:usage-revision')}`
+  )
 })

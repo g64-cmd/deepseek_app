@@ -185,7 +185,13 @@ const updateReply = (sessionId: string, reply: AssistantMessage) =>
     ),
   }))
 
-const persist = (sessionId: string) => {
+/**
+ * 保存会话到 IndexedDB；失败时标记保存失败供重试。
+ * usageChanged 表示本次内容含新的回复用量：在保存成功回调里递增用量修订号，
+ * 保证「保存失败→缓存旧统计→重试成功」的路径也会使缓存失效（失败时数据库
+ * 仍是旧数据，不提前递增，缓存在失败期间与数据保持一致）。
+ */
+const persist = (sessionId: string, usageChanged = false) => {
   const session = getSession(sessionId)
   if (session) {
     unsavedSessions.add(sessionId)
@@ -197,6 +203,9 @@ const persist = (sessionId: string) => {
     void db
       .saveSession(session, files)
       .then(() => {
+        if (usageChanged) {
+          bumpUsageRevision()
+        }
         if (epoch !== historyEpoch || !getSession(sessionId)) {
           return
         }
@@ -224,9 +233,10 @@ const persist = (sessionId: string) => {
   }
 }
 
+/** 重试失败的保存：无法区分失败批次里哪些含用量，一律按含用量处理（重试低频，多失效无害） */
 export const retrySaveSessions = () => {
   if (!get().importingHistory) {
-    unsavedSessions.forEach(persist)
+    unsavedSessions.forEach((id) => persist(id, true))
   }
 }
 
@@ -1209,8 +1219,8 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
         Object.entries(state.streaming).filter(([id]) => id !== sessionId)
       ),
     }))
-    persist(sessionId)
-    // 本轮流式可能落盘了新的 usage；列表元数据不变，靠修订号使用量缓存失效
-    bumpUsageRevision()
+    // 本轮流式可能落盘新的 usage；缓存失效在保存成功回调里发生（persist 内处理），
+    // 保存失败重试成功时同样会触发
+    persist(sessionId, true)
   }
 }
