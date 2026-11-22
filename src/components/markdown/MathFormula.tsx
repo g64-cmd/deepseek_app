@@ -69,6 +69,7 @@ export const MathBlock = memo(function MathBlock({
         className="ds-markdown-paragraph"
         data-rich-kind="math"
         data-rich-ready={pending ? 'false' : 'error'}
+        data-rich-gated={pending && !gate.active ? 'true' : undefined}
         onFocus={gate.activate}
       >
         {html}

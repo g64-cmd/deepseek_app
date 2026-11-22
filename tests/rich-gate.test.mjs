@@ -117,6 +117,7 @@ test('off-screen code block keeps source text without highlighting or language l
   let tree = renderGated(api.CodeBlock, props)
   const block = find(tree, (node) => node.props?.['data-rich-kind'] === 'code')
   assert.equal(block.props['data-rich-ready'], 'false')
+  assert.equal(block.props['data-rich-gated'], 'true', 'gated state is visible to probes')
   const pre = findPre(tree)
   assert.equal(pre.props.children, 'const answer = 42', 'source text stays readable')
   assert.equal(pre.props.dangerouslySetInnerHTML, undefined)
@@ -132,6 +133,11 @@ test('entering the prefetch range enhances the code block once and keeps it', ()
   observer().fire(block)
   const enhanced = renderGated(api.CodeBlock, props)
   assert.ok(findPre(enhanced).props.dangerouslySetInnerHTML, 'highlight runs after entering')
+  assert.equal(
+    find(enhanced, (node) => node.props?.['data-rich-kind'] === 'code').props['data-rich-gated'],
+    undefined,
+    'gated marker clears after enhancement'
+  )
   assert.deepEqual(api.fixture.loadCalls, ['json'])
   assert.ok(FakeIntersectionObserver.unobserved.includes(block), 'entry unobserves the block')
   // 离开视口（不再有观察）后增强保留：再次渲染不回到源码形态
@@ -194,6 +200,7 @@ test('off-screen display math keeps TeX source and renders KaTeX after entering'
   let tree = renderGated(api.MathBlock, props)
   const math = find(tree, (node) => node.props?.['data-rich-kind'] === 'math')
   assert.equal(math.props['data-rich-ready'], 'false')
+  assert.equal(math.props['data-rich-gated'], 'true')
   assert.equal(math.props.children, 'E = mc^2', 'TeX source stays readable')
   assert.deepEqual(api.fixture.katexCalls, [], 'no KaTeX layout off-screen')
 

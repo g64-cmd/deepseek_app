@@ -119,6 +119,7 @@ export const CodeBlock = memo(function CodeBlock({
       className="md-code-block"
       data-rich-kind={isMermaid && showDiagram ? 'mermaid-code' : 'code'}
       data-rich-ready={!gate.active ? 'false' : lang === null || loaded ? 'true' : 'false'}
+      data-rich-gated={!gate.active ? 'true' : undefined}
       onFocus={gate.activate}
     >
       <div className="md-code-block-banner">

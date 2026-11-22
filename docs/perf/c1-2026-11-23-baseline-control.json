@@ -1,0 +1,886 @@
+{
+  "schemaVersion": 1,
+  "measurementVersion": 3,
+  "startedAt": "2026-11-22T22:37:53.691Z",
+  "finishedAt": "2026-11-22T22:42:04.204Z",
+  "status": "complete",
+  "stages": {
+    "matrix": "complete",
+    "memory": "not-run",
+    "trace": "not-run"
+  },
+  "build": {
+    "commit": "57fab8145cb70a5ad2187c8119f562f3d6e58f06",
+    "sourceHashes": {
+      "scripts/perf/fixtures.mjs": "51d67e8c9e41430f0b9a1bf2da20299421b6799699ca1c17cdd022af52197d64",
+      "scripts/perf/browser.mjs": "f81cd266c0f733ebc273fe86f09c3e6f92d8a2b3cc5de12113b8d718c69f863a",
+      "scripts/perf/run-android.mjs": "ab5c991241ba26c8cb89c0407c1a334a189ad6210710c2734ed6d4c4c2eb47ac",
+      "src/components/messages/MessageList.tsx": "f4fa86495162946582ea4c7a02f13a91acc999050e061910b0334fe8c65d21fe",
+      "src/components/markdown/CodeBlock.tsx": "70c763b545db663b9165e191c81f5b812abbf1fd1245d6cd2596a5f9725211c2",
+      "src/components/markdown/MathFormula.tsx": "6a67fbe42508131fa52cfa3fbd35ea6dd509bfa49dbfd9d15216659962af3059",
+      "src/components/markdown/MermaidDiagram.tsx": "61535522668ce16b3282c03f100823a0233b49a83ba45e0ef681e578fb340f69"
+    },
+    "workingDiffSha256": "ee8b4b1c076e7a99b01f281c6536c09c991f6009e4fa826a15e235e40adad34a",
+    "apkSha256": "20652b744919d66558203b3782f2a5e5e54d784f934b73ad0a3cde15e90f7faf",
+    "installedApkSha256": "20652b744919d66558203b3782f2a5e5e54d784f934b73ad0a3cde15e90f7faf",
+    "webMode": "production"
+  },
+  "environment": {
+    "android": "14",
+    "api": "34",
+    "fingerprint": "google/sdk_gphone64_x86_64/emu64xa:14/UE1A.230829.050/12077443:userdebug/dev-keys",
+    "abi": "x86_64",
+    "display": "Physical size: 1080x2400",
+    "density": "Physical density: 420",
+    "webview": "Current WebView Update Service state\r\n  Multiprocess enabled: true\r\n  Current WebView package (name, version): (com.google.android.webview, 113.0.5672.136)\r\n  Minimum targetSdkVersion: 33\r\n  Minimum WebView version code: 567263637\r\n  Number of relros started: 1\r\n  Number of relros finished: 1\r\n  WebView package dirty: false\r\n  Any WebView package installed: true\r\n  Preferred WebView package (name, version): (com.google.android.webview, 113.0.5672.136)\r\n  WebView packages:\r\n    Valid package com.google.android.webview (versionName: 113.0.5672.136, versionCode: 567263637, targetSdkVersion: 34) is  installed/enabled for all users\r\n    com.google.android.webview.beta is NOT installed.\r\n    com.google.android.webview.dev is NOT installed.\r\n    com.google.android.webview.canary is NOT installed.\r\n    com.google.android.webview.debug is NOT installed.\r\n    com.android.webview is NOT installed.",
+    "emulator": true,
+    "browser": {
+      "protocolVersion": "1.3",
+      "product": "Chrome/113.0.5672.136",
+      "revision": "@2d54072eb2f350d37f3f304c4ba0fafcddbd7e82",
+      "userAgent": "Mozilla/5.0 (Linux; Android 14; sdk_gphone64_x86_64 Build/UE1A.230829.050; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/113.0.5672.136 Mobile Safari/537.36",
+      "jsVersion": "11.3.244.11"
+    },
+    "viewport": {
+      "width": 412,
+      "height": 840,
+      "dpr": 2.625,
+      "userAgent": "Mozilla/5.0 (Linux; Android 14; sdk_gphone64_x86_64 Build/UE1A.230829.050; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/113.0.5672.136 Mobile Safari/537.36"
+    }
+  },
+  "fixture": {
+    "version": "c0-v1",
+    "seed": 12648430,
+    "now": 1795305600000,
+    "fixtureSourceSha256": "51d67e8c9e41430f0b9a1bf2da20299421b6799699ca1c17cdd022af52197d64",
+    "sessions": 1006,
+    "messages": 2672,
+    "originalBytes": 121007220,
+    "files": [
+      {
+        "id": "c0-v1-image-0",
+        "bytes": 10779497,
+        "mimeType": "image/png",
+        "width": 2048,
+        "height": 1536,
+        "sha256": "6977562d0a3e67ab085679496bfa166ce25d84e12041f71db2cea8a2c0ca85b7"
+      },
+      {
+        "id": "c0-v1-image-1",
+        "bytes": 10779267,
+        "mimeType": "image/png",
+        "width": 2048,
+        "height": 1536,
+        "sha256": "eb4380d503e31fd7b82fd9365db501ffe6a04dce5238b0394909a66970861092"
+      },
+      {
+        "id": "c0-v1-image-2",
+        "bytes": 10779859,
+        "mimeType": "image/png",
+        "width": 2048,
+        "height": 1536,
+        "sha256": "b49ae40d52c27ec633461fefa129b49047ddeef11eb765da045e378a696a67e5"
+      },
+      {
+        "id": "c0-v1-image-3",
+        "bytes": 10779500,
+        "mimeType": "image/png",
+        "width": 2048,
+        "height": 1536,
+        "sha256": "745fa98f11027b61bbfb6f22a43cd780331f48d5169a8f27c7a8a227e8689c42"
+      },
+      {
+        "id": "c0-v1-image-4",
+        "bytes": 10779899,
+        "mimeType": "image/png",
+        "width": 2048,
+        "height": 1536,
+        "sha256": "9427f6814053a7baf511fb0124a8c063166b85a71c5838a856c2622e36a86125"
+      },
+      {
+        "id": "c0-v1-pdf",
+        "bytes": 67109198,
+        "mimeType": "application/pdf",
+        "sha256": "29981662677f5f4938f416012de3afc2f9cd9a50d89357e2af21e5f70f9ec253"
+      }
+    ],
+    "mainScenarios": [
+      {
+        "id": "c0-v1-text",
+        "messages": 300,
+        "users": 150,
+        "assistants": 150,
+        "codeBlocks": 0,
+        "codeLines": 0,
+        "displayMath": 0,
+        "mermaid": 0,
+        "textBytes": 208229
+      },
+      {
+        "id": "c0-v1-mixed",
+        "messages": 300,
+        "users": 150,
+        "assistants": 150,
+        "codeBlocks": 30,
+        "codeLines": 24000,
+        "displayMath": 240,
+        "mermaid": 30,
+        "textBytes": 1333503
+      },
+      {
+        "id": "c0-v1-heavy",
+        "messages": 50,
+        "users": 25,
+        "assistants": 25,
+        "codeBlocks": 0,
+        "codeLines": 0,
+        "displayMath": 96,
+        "mermaid": 13,
+        "textBytes": 38920
+      },
+      {
+        "id": "c0-v1-images",
+        "messages": 10,
+        "users": 5,
+        "assistants": 5,
+        "codeBlocks": 0,
+        "codeLines": 0,
+        "displayMath": 0,
+        "mermaid": 0,
+        "textBytes": 7482
+      },
+      {
+        "id": "c0-v1-branches",
+        "messages": 10,
+        "users": 5,
+        "assistants": 5,
+        "codeBlocks": 0,
+        "codeLines": 0,
+        "displayMath": 0,
+        "mermaid": 0,
+        "textBytes": 6930
+      },
+      {
+        "id": "c0-v1-backup",
+        "messages": 2,
+        "users": 1,
+        "assistants": 1,
+        "codeBlocks": 0,
+        "codeLines": 0,
+        "displayMath": 0,
+        "mermaid": 0,
+        "textBytes": 2044
+      }
+    ]
+  },
+  "switchGroups": {
+    "cold/c0-v1-text": {
+      "tailPaintProxyMs": {
+        "count": 1,
+        "median": 766.2999999999302,
+        "max": 766.2999999999302
+      },
+      "shellPaintProxyMs": {
+        "count": 1,
+        "median": 729.3999999999069,
+        "max": 729.3999999999069
+      },
+      "maxLongtaskMs": {
+        "count": 1,
+        "median": 628,
+        "max": 628
+      },
+      "blockingMs": {
+        "count": 1,
+        "median": 578,
+        "max": 578
+      },
+      "domNodes": {
+        "count": 1,
+        "median": 6789,
+        "max": 6789
+      },
+      "jsHeapUsedBytes": {
+        "count": 1,
+        "median": 12700000,
+        "max": 12700000
+      },
+      "invalidVisibleSamples": 0
+    },
+    "cold/c0-v1-mixed": {
+      "tailPaintProxyMs": {
+        "count": 1,
+        "median": 8045.900000000023,
+        "max": 8045.900000000023
+      },
+      "shellPaintProxyMs": {
+        "count": 1,
+        "median": 4182.20000000007,
+        "max": 4182.20000000007
+      },
+      "maxLongtaskMs": {
+        "count": 1,
+        "median": 2593,
+        "max": 2593
+      },
+      "blockingMs": {
+        "count": 1,
+        "median": 7639,
+        "max": 7639
+      },
+      "domNodes": {
+        "count": 1,
+        "median": 209469,
+        "max": 209469
+      },
+      "jsHeapUsedBytes": {
+        "count": 1,
+        "median": 12700000,
+        "max": 12700000
+      },
+      "invalidVisibleSamples": 0
+    },
+    "cold/c0-v1-heavy": {
+      "tailPaintProxyMs": {
+        "count": 1,
+        "median": 6100.099999999977,
+        "max": 6100.099999999977
+      },
+      "shellPaintProxyMs": {
+        "count": 1,
+        "median": 914.6999999999534,
+        "max": 914.6999999999534
+      },
+      "maxLongtaskMs": {
+        "count": 1,
+        "median": 4721,
+        "max": 4721
+      },
+      "blockingMs": {
+        "count": 1,
+        "median": 5506,
+        "max": 5506
+      },
+      "domNodes": {
+        "count": 1,
+        "median": 22997,
+        "max": 22997
+      },
+      "jsHeapUsedBytes": {
+        "count": 1,
+        "median": 12700000,
+        "max": 12700000
+      },
+      "invalidVisibleSamples": 0
+    },
+    "cold/c0-v1-images": {
+      "tailPaintProxyMs": {
+        "count": 1,
+        "median": 930.1999999999534,
+        "max": 930.1999999999534
+      },
+      "shellPaintProxyMs": {
+        "count": 1,
+        "median": 100.19999999995343,
+        "max": 100.19999999995343
+      },
+      "maxLongtaskMs": {
+        "count": 1,
+        "median": 57,
+        "max": 57
+      },
+      "blockingMs": {
+        "count": 1,
+        "median": 7,
+        "max": 7
+      },
+      "domNodes": {
+        "count": 1,
+        "median": 279,
+        "max": 279
+      },
+      "jsHeapUsedBytes": {
+        "count": 1,
+        "median": 19300000,
+        "max": 19300000
+      },
+      "invalidVisibleSamples": 0
+    },
+    "cold/c0-v1-branches": {
+      "tailPaintProxyMs": {
+        "count": 1,
+        "median": 111.5999999998603,
+        "max": 111.5999999998603
+      },
+      "shellPaintProxyMs": {
+        "count": 1,
+        "median": 76.80000000004657,
+        "max": 76.80000000004657
+      },
+      "maxLongtaskMs": {
+        "count": 1,
+        "median": 0,
+        "max": 0
+      },
+      "blockingMs": {
+        "count": 1,
+        "median": 0,
+        "max": 0
+      },
+      "domNodes": {
+        "count": 1,
+        "median": 182,
+        "max": 182
+      },
+      "jsHeapUsedBytes": {
+        "count": 1,
+        "median": 12700000,
+        "max": 12700000
+      },
+      "invalidVisibleSamples": 0
+    },
+    "warm/c0-v1-text": {
+      "tailPaintProxyMs": {
+        "count": 1,
+        "median": 703.8000000000466,
+        "max": 703.8000000000466
+      },
+      "shellPaintProxyMs": {
+        "count": 1,
+        "median": 681.8999999999069,
+        "max": 681.8999999999069
+      },
+      "maxLongtaskMs": {
+        "count": 1,
+        "median": 643.3999999999069,
+        "max": 643.3999999999069
+      },
+      "blockingMs": {
+        "count": 1,
+        "median": 593.3999999999069,
+        "max": 593.3999999999069
+      },
+      "domNodes": {
+        "count": 1,
+        "median": 6789,
+        "max": 6789
+      },
+      "jsHeapUsedBytes": {
+        "count": 1,
+        "median": 12700000,
+        "max": 12700000
+      },
+      "invalidVisibleSamples": 0
+    },
+    "warm/c0-v1-mixed": {
+      "tailPaintProxyMs": {
+        "count": 1,
+        "median": 36205.69999999995,
+        "max": 36205.69999999995
+      },
+      "shellPaintProxyMs": {
+        "count": 1,
+        "median": 36164,
+        "max": 36164
+      },
+      "maxLongtaskMs": {
+        "count": 1,
+        "median": 35234.40000000014,
+        "max": 35234.40000000014
+      },
+      "blockingMs": {
+        "count": 1,
+        "median": 35962.40000000014,
+        "max": 35962.40000000014
+      },
+      "domNodes": {
+        "count": 1,
+        "median": 222669,
+        "max": 222669
+      },
+      "jsHeapUsedBytes": {
+        "count": 1,
+        "median": 12700000,
+        "max": 12700000
+      },
+      "invalidVisibleSamples": 0
+    },
+    "warm/c0-v1-heavy": {
+      "tailPaintProxyMs": {
+        "count": 1,
+        "median": 6943.899999999907,
+        "max": 6943.899999999907
+      },
+      "shellPaintProxyMs": {
+        "count": 1,
+        "median": 6918.199999999953,
+        "max": 6918.199999999953
+      },
+      "maxLongtaskMs": {
+        "count": 1,
+        "median": 6675.199999999953,
+        "max": 6675.199999999953
+      },
+      "blockingMs": {
+        "count": 1,
+        "median": 6718.199999999953,
+        "max": 6718.199999999953
+      },
+      "domNodes": {
+        "count": 1,
+        "median": 22997,
+        "max": 22997
+      },
+      "jsHeapUsedBytes": {
+        "count": 1,
+        "median": 12700000,
+        "max": 12700000
+      },
+      "invalidVisibleSamples": 0
+    },
+    "warm/c0-v1-images": {
+      "tailPaintProxyMs": {
+        "count": 1,
+        "median": 1036,
+        "max": 1036
+      },
+      "shellPaintProxyMs": {
+        "count": 1,
+        "median": 259.60000000009313,
+        "max": 259.60000000009313
+      },
+      "maxLongtaskMs": {
+        "count": 1,
+        "median": 78,
+        "max": 78
+      },
+      "blockingMs": {
+        "count": 1,
+        "median": 28,
+        "max": 28
+      },
+      "domNodes": {
+        "count": 1,
+        "median": 279,
+        "max": 279
+      },
+      "jsHeapUsedBytes": {
+        "count": 1,
+        "median": 12700000,
+        "max": 12700000
+      },
+      "invalidVisibleSamples": 0
+    },
+    "warm/c0-v1-branches": {
+      "tailPaintProxyMs": {
+        "count": 1,
+        "median": 127.80000000004657,
+        "max": 127.80000000004657
+      },
+      "shellPaintProxyMs": {
+        "count": 1,
+        "median": 101.80000000004657,
+        "max": 101.80000000004657
+      },
+      "maxLongtaskMs": {
+        "count": 1,
+        "median": 0,
+        "max": 0
+      },
+      "blockingMs": {
+        "count": 1,
+        "median": 0,
+        "max": 0
+      },
+      "domNodes": {
+        "count": 1,
+        "median": 182,
+        "max": 182
+      },
+      "jsHeapUsedBytes": {
+        "count": 1,
+        "median": 12700000,
+        "max": 12700000
+      },
+      "invalidVisibleSamples": 0
+    }
+  },
+  "startup": {
+    "nativeTotalTimeMs": {
+      "count": 7,
+      "median": 1932,
+      "max": 2494
+    },
+    "interactiveUpperBoundMs": {
+      "count": 7,
+      "median": 5208.128199999999,
+      "max": 6264.5193
+    },
+    "note": "Upper bound includes adb start, CDP attach and settings dismissal; not exact first frame."
+  },
+  "scroll": [
+    {
+      "kind": "cold",
+      "sessionId": "c0-v1-text",
+      "actualWindowMs": 6008.099999999977,
+      "pixelsPerSecond": 1500,
+      "initialTop": 98111.6171875,
+      "finalTop": 89064.3828125,
+      "moved": 9047.234375,
+      "reachedTop": false,
+      "longtasksSupported": true,
+      "longtasks": {
+        "count": 0,
+        "maxMs": 0,
+        "totalMs": 0,
+        "blockingMs": 0,
+        "tasks": []
+      },
+      "frames": {
+        "count": 341,
+        "medianMs": 16.66699999999946,
+        "p95Ms": 33.33299999999872,
+        "maxMs": 33.33400000000074,
+        "medianFps": 59.99880002400146
+      },
+      "heap": {
+        "usedBytes": 12700000,
+        "totalBytes": 20500000,
+        "limitBytes": 703000000
+      }
+    },
+    {
+      "kind": "cold",
+      "sessionId": "c0-v1-mixed",
+      "actualWindowMs": 6000.5,
+      "pixelsPerSecond": 1500,
+      "initialTop": 1025064,
+      "finalTop": 1016039.25,
+      "moved": 9024.75,
+      "reachedTop": false,
+      "longtasksSupported": true,
+      "longtasks": {
+        "count": 0,
+        "maxMs": 0,
+        "totalMs": 0,
+        "blockingMs": 0,
+        "tasks": []
+      },
+      "frames": {
+        "count": 264,
+        "medianMs": 16.666999999994005,
+        "p95Ms": 33.33299999999872,
+        "maxMs": 1200,
+        "medianFps": 59.9988000240211
+      },
+      "heap": {
+        "usedBytes": 12700000,
+        "totalBytes": 20500000,
+        "limitBytes": 703000000
+      }
+    },
+    {
+      "kind": "cold",
+      "sessionId": "c0-v1-heavy",
+      "actualWindowMs": 6004.599999999977,
+      "pixelsPerSecond": 1500,
+      "initialTop": 53016.3828125,
+      "finalTop": 44007.6171875,
+      "moved": 9008.765625,
+      "reachedTop": false,
+      "longtasksSupported": true,
+      "longtasks": {
+        "count": 1,
+        "maxMs": 54,
+        "totalMs": 54,
+        "blockingMs": 4,
+        "tasks": [
+          {
+            "startMs": 5231,
+            "durationMs": 54
+          }
+        ]
+      },
+      "frames": {
+        "count": 235,
+        "medianMs": 16.66699999999946,
+        "p95Ms": 33.33399999999892,
+        "maxMs": 1383.3330000000005,
+        "medianFps": 59.99880002400146
+      },
+      "heap": {
+        "usedBytes": 12700000,
+        "totalBytes": 19300000,
+        "limitBytes": 703000000
+      }
+    },
+    {
+      "kind": "cold",
+      "sessionId": "c0-v1-images",
+      "actualWindowMs": 2244.5,
+      "pixelsPerSecond": 1500,
+      "initialTop": 3341.71435546875,
+      "finalTop": 0,
+      "moved": 3341.71435546875,
+      "reachedTop": true,
+      "longtasksSupported": true,
+      "longtasks": {
+        "count": 4,
+        "maxMs": 78,
+        "totalMs": 235,
+        "blockingMs": 35,
+        "tasks": [
+          {
+            "startMs": 321.30000000004657,
+            "durationMs": 54
+          },
+          {
+            "startMs": 899.0999999998603,
+            "durationMs": 51
+          },
+          {
+            "startMs": 1368.1999999999534,
+            "durationMs": 52
+          },
+          {
+            "startMs": 1930.8000000000466,
+            "durationMs": 78
+          }
+        ]
+      },
+      "frames": {
+        "count": 114,
+        "medianMs": 16.66699999999946,
+        "p95Ms": 33.33399999999983,
+        "maxMs": 83.33299999999872,
+        "medianFps": 59.99880002400146
+      },
+      "heap": {
+        "usedBytes": 19300000,
+        "totalBytes": 26000000,
+        "limitBytes": 703000000
+      }
+    },
+    {
+      "kind": "cold",
+      "sessionId": "c0-v1-branches",
+      "actualWindowMs": 946.1999999999534,
+      "pixelsPerSecond": 1500,
+      "initialTop": 1385.5238037109375,
+      "finalTop": 0,
+      "moved": 1385.5238037109375,
+      "reachedTop": true,
+      "longtasksSupported": true,
+      "longtasks": {
+        "count": 0,
+        "maxMs": 0,
+        "totalMs": 0,
+        "blockingMs": 0,
+        "tasks": []
+      },
+      "frames": {
+        "count": 56,
+        "medianMs": 16.66699999999946,
+        "p95Ms": 16.66700000000128,
+        "maxMs": 16.66700000000128,
+        "medianFps": 59.99880002400146
+      },
+      "heap": {
+        "usedBytes": 12700000,
+        "totalBytes": 19300000,
+        "limitBytes": 703000000
+      }
+    },
+    {
+      "kind": "warm",
+      "sessionId": "c0-v1-text",
+      "actualWindowMs": 6010.699999999953,
+      "pixelsPerSecond": 1500,
+      "initialTop": 98111.6171875,
+      "finalTop": 89070.4765625,
+      "moved": 9041.140625,
+      "reachedTop": false,
+      "longtasksSupported": true,
+      "longtasks": {
+        "count": 0,
+        "maxMs": 0,
+        "totalMs": 0,
+        "blockingMs": 0,
+        "tasks": []
+      },
+      "frames": {
+        "count": 316,
+        "medianMs": 16.66699999999946,
+        "p95Ms": 33.33399999999892,
+        "maxMs": 50,
+        "medianFps": 59.99880002400146
+      },
+      "heap": {
+        "usedBytes": 12700000,
+        "totalBytes": 19300000,
+        "limitBytes": 703000000
+      }
+    },
+    {
+      "kind": "warm",
+      "sessionId": "c0-v1-mixed",
+      "actualWindowMs": 6008.5,
+      "pixelsPerSecond": 1500,
+      "initialTop": 1025064,
+      "finalTop": 1016013.6875,
+      "moved": 9050.3125,
+      "reachedTop": false,
+      "longtasksSupported": true,
+      "longtasks": {
+        "count": 1,
+        "maxMs": 60,
+        "totalMs": 60,
+        "blockingMs": 10,
+        "tasks": [
+          {
+            "startMs": 3902.1999999999534,
+            "durationMs": 60
+          }
+        ]
+      },
+      "frames": {
+        "count": 322,
+        "medianMs": 16.66700000000128,
+        "p95Ms": 33.33299999999872,
+        "maxMs": 116.66700000000128,
+        "medianFps": 59.99880002399491
+      },
+      "heap": {
+        "usedBytes": 12700000,
+        "totalBytes": 19300000,
+        "limitBytes": 703000000
+      }
+    },
+    {
+      "kind": "warm",
+      "sessionId": "c0-v1-heavy",
+      "actualWindowMs": 6017.899999999907,
+      "pixelsPerSecond": 1500,
+      "initialTop": 53016.3828125,
+      "finalTop": 43958.85546875,
+      "moved": 9057.52734375,
+      "reachedTop": false,
+      "longtasksSupported": true,
+      "longtasks": {
+        "count": 0,
+        "maxMs": 0,
+        "totalMs": 0,
+        "blockingMs": 0,
+        "tasks": []
+      },
+      "frames": {
+        "count": 332,
+        "medianMs": 16.66699999998673,
+        "p95Ms": 33.33300000001327,
+        "maxMs": 50,
+        "medianFps": 59.99880002404729
+      },
+      "heap": {
+        "usedBytes": 12700000,
+        "totalBytes": 19300000,
+        "limitBytes": 703000000
+      }
+    },
+    {
+      "kind": "warm",
+      "sessionId": "c0-v1-images",
+      "actualWindowMs": 2247.399999999907,
+      "pixelsPerSecond": 1500,
+      "initialTop": 3341.71435546875,
+      "finalTop": 0,
+      "moved": 3341.71435546875,
+      "reachedTop": true,
+      "longtasksSupported": true,
+      "longtasks": {
+        "count": 8,
+        "maxMs": 71,
+        "totalMs": 476,
+        "blockingMs": 76,
+        "tasks": [
+          {
+            "startMs": 358.80000000004657,
+            "durationMs": 64
+          },
+          {
+            "startMs": 950.8999999999069,
+            "durationMs": 54
+          },
+          {
+            "startMs": 1013.5999999998603,
+            "durationMs": 58
+          },
+          {
+            "startMs": 1083.6999999999534,
+            "durationMs": 55
+          },
+          {
+            "startMs": 1375.5999999998603,
+            "durationMs": 59
+          },
+          {
+            "startMs": 1953.3999999999069,
+            "durationMs": 52
+          },
+          {
+            "startMs": 2013.3999999999069,
+            "durationMs": 63
+          },
+          {
+            "startMs": 2081.3000000000466,
+            "durationMs": 71
+          }
+        ]
+      },
+      "frames": {
+        "count": 109,
+        "medianMs": 16.66700000000128,
+        "p95Ms": 50,
+        "maxMs": 66.66700000000128,
+        "medianFps": 59.99880002399491
+      },
+      "heap": {
+        "usedBytes": 12700000,
+        "totalBytes": 19300000,
+        "limitBytes": 703000000
+      }
+    },
+    {
+      "kind": "warm",
+      "sessionId": "c0-v1-branches",
+      "actualWindowMs": 948,
+      "pixelsPerSecond": 1500,
+      "initialTop": 1385.5238037109375,
+      "finalTop": 0,
+      "moved": 1385.5238037109375,
+      "reachedTop": true,
+      "longtasksSupported": true,
+      "longtasks": {
+        "count": 0,
+        "maxMs": 0,
+        "totalMs": 0,
+        "blockingMs": 0,
+        "tasks": []
+      },
+      "frames": {
+        "count": 44,
+        "medianMs": 16.667000000015832,
+        "p95Ms": 33.33300000001327,
+        "maxMs": 33.33400000000256,
+        "medianFps": 59.99880002394252
+      },
+      "heap": {
+        "usedBytes": 12700000,
+        "totalBytes": 19300000,
+        "limitBytes": 703000000
+      }
+    }
+  ],
+  "memory": [],
+  "memoryProtocol": null,
+  "trace": null
+}

@@ -1,5 +1,5 @@
 /** Browser-side C0 measurement. No API calls; imported over CDP into the isolated app. */
-export const MEASUREMENT_VERSION = 2
+export const MEASUREMENT_VERSION = 3
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 const frame = () => new Promise((resolve) => requestAnimationFrame(resolve))
 const paintOpportunity = async () => {
@@ -180,7 +180,9 @@ export function visibleState(sessionId, tailId) {
 export async function settle(sessionId, timeoutMs = 180_000) {
   await waitFor(() => {
     const view = viewOf(sessionId)
-    return view && !view.querySelector('[data-rich-ready="false"]')
+    // C1 按需渲染下，屏外门控块（data-rich-gated）有意保持 'false' 且没有
+    // 正在执行的任务；就绪等待只跟踪已开始增强的块。
+    return view && !view.querySelector('[data-rich-ready="false"]:not([data-rich-gated="true"])')
   }, timeoutMs)
   await paintOpportunity()
   const errors = viewOf(sessionId).querySelectorAll('[data-rich-ready="error"]').length

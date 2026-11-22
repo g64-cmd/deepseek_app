@@ -10,6 +10,7 @@
 | [阶段 B 性能报告](android-phase-b-perf.md) | 长会话基线与阶段 C 性能待办 |
 | [阶段 C 推进方案](android-phase-c-plan.md) | 当前源码研究、测量校准、富内容渲染、可访问性、历史检索与附件可靠性实施顺序 |
 | [C0 测量与基线](android-phase-c0-baseline.md) | 固定夹具、独立测试包、75 样本矩阵、trace、20 轮内存及大备份闭环与证据索引 |
+| [阶段 C 验证记录](android-phase-c-verification.md) | C1 富内容按需渲染：实现摘要、探针 v3 口径、前后矩阵对照、图片口径甄别、滚动与内存 |
 | [当前项目设计](project-design.md) | 现有源码架构、功能与数据流、协议、存储和 Android 差距 |
 | [DeepSeek API 本地资料入口](deepseek-api/README.md) | 完整文档范围、能力导航、更新和校验命令 |
 | [官方文档快照目录](deepseek-api/snapshot-2026-11-17/INDEX.md) | 中英文各 71 页的逐页离线入口（快照仅存本地，可重新生成） |
