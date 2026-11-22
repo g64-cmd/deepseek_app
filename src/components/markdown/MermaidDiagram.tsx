@@ -78,7 +78,12 @@ export const MermaidDiagram = memo(function MermaidDiagram({
 
   if (!code.trim() || !result.svg) {
     return (
-      <div className="md-mermaid-status" role="status">
+      <div
+        className="md-mermaid-status"
+        role="status"
+        data-rich-kind="mermaid"
+        data-rich-ready={!loading && (!code.trim() || result.failedCode === code) ? 'error' : 'false'}
+      >
         {!loading && !code.trim()
           ? t('mermaidEmpty')
           : !loading && result.failedCode === code
@@ -88,5 +93,12 @@ export const MermaidDiagram = memo(function MermaidDiagram({
     )
   }
 
-  return <div className="md-mermaid-diagram" dangerouslySetInnerHTML={{ __html: result.svg }} />
+  return (
+    <div
+      className="md-mermaid-diagram"
+      data-rich-kind="mermaid"
+      data-rich-ready="true"
+      dangerouslySetInnerHTML={{ __html: result.svg }}
+    />
+  )
 })

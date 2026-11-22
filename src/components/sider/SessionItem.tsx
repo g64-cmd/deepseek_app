@@ -54,6 +54,7 @@ export const SessionItem = memo(function SessionItem({
 
   return (
     <div
+      data-session-item={session.id}
       className={clsx(styles.item, active && styles.active)}
       onClick={() => {
         selectSession(session.id)

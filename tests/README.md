@@ -20,9 +20,10 @@ node --test tests/requests.test.mjs
 | `native-files.test.mjs` | 分享文件身份、分块字节、写入/清理失败恢复、启动清理与并发分享 |
 | `settings.test.mjs` | 设置分组的界面点击与程序导航 |
 | `platform.test.mjs` | Android 返回层级与外链/引用点击 |
+| `perf.test.mjs` | C0 夹具计数与分支、确定性数据、空库注入与事务失败、长任务和帧间隔统计口径 |
 
 `helpers/entries/` 只负责导出被测生产模块；`helpers/runtime/` 提供存储、浏览器和平台边界替身。`helpers/compile.mjs` 共用项目现有 Rspack，将测试编译到系统临时目录中的独立子目录，在测试结束后自动清理，不向项目 `tmp/` 写入。测试不安装依赖、不读取用户凭据、不调用真实 API。
 
-当前共 **66 项**。存储测试可控制事务提交顺序及失败；图片测试只模拟解码/canvas 边界；平台测试检查参数和字节。这些覆盖不代表真机、真实 React 调度、Android 接收应用或真实 API 验证。
+当前共 **74 项**。存储测试可控制事务提交顺序及失败；图片测试只模拟解码/canvas 边界；平台测试检查参数和字节。C0 工具测试校验夹具、统计口径、备份重编号后的分支语义及尾部就绪探针，设备测量另见 C0 记录。这些覆盖不代表真机、真实 React 调度、Android 接收应用或真实 API 验证。
 
 新增测试文件时需更新 `package.json` 的 `test` 命令。保留明确的文件列表，保证 Windows 与 CI 使用相同的测试入口。

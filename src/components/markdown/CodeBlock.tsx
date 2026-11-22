@@ -104,7 +104,11 @@ export const CodeBlock = memo(function CodeBlock({
     return Prism.highlight(code, Prism.languages[name], name)
   }, [code, lang, loaded])
   return (
-    <div className="md-code-block">
+    <div
+      className="md-code-block"
+      data-rich-kind={isMermaid && showDiagram ? 'mermaid-code' : 'code'}
+      data-rich-ready={lang === null || loaded ? 'true' : 'false'}
+    >
       <div className="md-code-block-banner">
         <CodeInfoRow
           code={code}

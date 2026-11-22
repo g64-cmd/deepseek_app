@@ -17,6 +17,14 @@ android {
         }
     }
     buildTypes {
+        debug {
+            // C0 使用独立安装包与数据目录；常规 debug/release 不受此开关影响。
+            if (providers.gradleProperty('c0Perf').isPresent()) {
+                applicationIdSuffix ".c0"
+                resValue "string", "app_name", "WhaleChat C0"
+                resValue "string", "title_activity_main", "WhaleChat C0"
+            }
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'

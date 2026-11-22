@@ -143,8 +143,17 @@ export const MessageList = ({
   const uploadRetryId = getUploadRetryId(messages, streaming)
   return (
     <ScrollToBottomContext.Provider value={scrollToBottom}>
-      <div ref={isMobile ? undefined : scrollRef} className={styles.container}>
-        <div ref={isMobile ? scrollRef : undefined} className={styles.scroll}>
+      <div
+        ref={isMobile ? undefined : scrollRef}
+        className={styles.container}
+        data-session-view={session.id}
+        data-message-scroll={isMobile ? undefined : 'true'}
+      >
+        <div
+          ref={isMobile ? scrollRef : undefined}
+          className={styles.scroll}
+          data-message-scroll={isMobile ? 'true' : undefined}
+        >
           <div ref={contentRef} className={styles.column}>
             {messages.map((message, index) =>
               message.role === 'user' ? (

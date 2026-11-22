@@ -11,6 +11,7 @@ export const MobileHeader = ({ title }: { title?: string }) => {
   return (
     <div className={styles.header}>
       <IconButton
+        data-open-sidebar
         size="xl"
         tone="primary"
         icon={<IconMenuOutline20 />}

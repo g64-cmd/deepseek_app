@@ -69,7 +69,12 @@ export const UserMessage = memo(function UserMessage({
   }
 
   return (
-    <div className={clsx(styles.container, isFirst && styles.isFirst)}>
+    <div
+      className={clsx(styles.container, isFirst && styles.isFirst)}
+      data-message-id={message.id}
+      data-message-role="user"
+      data-image-count={message.files.filter((file) => isImage(getFileViewType(file.name))).length}
+    >
       {message.files.length > 0 ? (
         <div
           className={clsx(

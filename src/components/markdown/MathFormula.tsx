@@ -10,6 +10,7 @@ const KATEX_WRAPPER = {
 type MathHtmlResult = {
   html: string
   renderMode: 'katex' | 'fallback'
+  pending?: boolean
 }
 
 const noop = () => {}
@@ -30,7 +31,7 @@ const useMathHtml = (input: string, isInline: boolean): MathHtmlResult => {
 
   return useMemo((): MathHtmlResult => {
     if (!katex) {
-      return { html: input, renderMode: 'fallback' }
+      return { html: input, renderMode: 'fallback', pending: true }
     }
     try {
       const [prefix, suffix] = KATEX_WRAPPER[isInline ? 'inline' : 'display']
@@ -47,12 +48,20 @@ const useMathHtml = (input: string, isInline: boolean): MathHtmlResult => {
 }
 
 export const MathBlock = memo(function MathBlock({ value }: { value: string }) {
-  const { html, renderMode } = useMathHtml(value, false)
+  const { html, renderMode, pending } = useMathHtml(value, false)
   if (renderMode === 'fallback') {
-    return <p className="ds-markdown-paragraph">{html}</p>
+    return (
+      <p
+        className="ds-markdown-paragraph"
+        data-rich-kind="math"
+        data-rich-ready={pending ? 'false' : 'error'}
+      >
+        {html}
+      </p>
+    )
   }
   return (
-    <span className="katex-display ds-markdown-math">
+    <span className="katex-display ds-markdown-math" data-rich-kind="math" data-rich-ready="true">
       <span className="katex" dangerouslySetInnerHTML={{ __html: html }}></span>
     </span>
   )

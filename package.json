@@ -12,8 +12,9 @@
     "apk:debug": "pnpm build:android && cd android && .\\gradlew.bat assembleDebug",
     "apk:install": "adb install -r android/app/build/outputs/apk/debug/app-debug.apk",
     "type": "tsc -p tsconfig.json",
-    "lint": "oxlint src rspack.config.ts",
-    "test": "node --test tests/platform.test.mjs tests/models.test.mjs tests/chat.test.mjs tests/storage.test.mjs tests/settings.test.mjs tests/native-files.test.mjs tests/attachment-view.test.mjs tests/requests.test.mjs",
+    "lint": "oxlint src rspack.config.ts scripts/perf tests/perf.test.mjs",
+    "test": "node --test tests/platform.test.mjs tests/models.test.mjs tests/chat.test.mjs tests/storage.test.mjs tests/settings.test.mjs tests/native-files.test.mjs tests/attachment-view.test.mjs tests/requests.test.mjs tests/perf.test.mjs",
+    "perf:c0": "node scripts/perf/run-android.mjs",
     "format": "oxfmt --write ."
   },
   "dependencies": {
