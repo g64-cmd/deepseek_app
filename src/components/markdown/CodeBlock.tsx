@@ -6,6 +6,7 @@ import {
   isHighlightLoaded,
   loadHighlight,
 } from '../../services/markdown/highlight.js'
+import { useRichGate } from '../messages/richGate.js'
 import { IconCheckOutline16, IconCopyOutline16 } from '../base/icons.js'
 import { showToast } from '../base/toastState.js'
 import { copyText } from '../../utils/clipboard.js'
@@ -69,7 +70,10 @@ const CodeInfoRow = ({
   )
 }
 
-/** 代码块：语言包按需加载，不支持或尚未加载的语言按纯文本显示 */
+/**
+ * 代码块：语言包按需加载，不支持或尚未加载的语言按纯文本显示。
+ * 已结束回答中的块进入视口预取范围前保留源码原文，不执行高亮/语言包加载/图表绘制。
+ */
 export const CodeBlock = memo(function CodeBlock({
   code,
   infostring,
@@ -85,8 +89,11 @@ export const CodeBlock = memo(function CodeBlock({
   const rerender = useReducer((n: number) => n + 1, 0)[1]
   const lang = getHighlightLang(infostring)
   const loaded = lang !== null && isHighlightLoaded(lang)
+  // 门控只针对有真实成本的形态：图表模式或真实高亮语言；纯文本无增强成本。
+  const gateable = (isMermaid && showDiagram) || lang !== null
+  const gate = useRichGate(!loading && gateable)
   useEffect(() => {
-    if (lang === null || loaded) {
+    if (!gate.active || lang === null || loaded) {
       return
     }
     let unmounted = false
@@ -98,16 +105,21 @@ export const CodeBlock = memo(function CodeBlock({
     return () => {
       unmounted = true
     }
-  }, [lang, loaded, rerender])
+  }, [gate.active, lang, loaded, rerender])
   const renderedHtml = useMemo(() => {
+    if (!gate.active) {
+      return null
+    }
     const name = lang !== null && loaded ? lang : 'plaintext'
     return Prism.highlight(code, Prism.languages[name], name)
-  }, [code, lang, loaded])
+  }, [gate.active, code, lang, loaded])
   return (
     <div
+      ref={gate.setElement}
       className="md-code-block"
       data-rich-kind={isMermaid && showDiagram ? 'mermaid-code' : 'code'}
-      data-rich-ready={lang === null || loaded ? 'true' : 'false'}
+      data-rich-ready={!gate.active ? 'false' : lang === null || loaded ? 'true' : 'false'}
+      onFocus={gate.activate}
     >
       <div className="md-code-block-banner">
         <CodeInfoRow
@@ -118,9 +130,16 @@ export const CodeBlock = memo(function CodeBlock({
         />
       </div>
       {isMermaid && showDiagram ? (
-        <MermaidDiagram code={code} loading={loading} />
-      ) : (
+        gate.active ? (
+          <MermaidDiagram code={code} loading={loading} />
+        ) : (
+          // 屏外图表保留可读源码，进入预取范围后再挂载绘制。
+          <pre>{code}</pre>
+        )
+      ) : renderedHtml !== null ? (
         <pre dangerouslySetInnerHTML={{ __html: renderedHtml }}></pre>
+      ) : (
+        <pre>{code}</pre>
       )}
     </div>
   )

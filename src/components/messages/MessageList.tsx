@@ -9,6 +9,7 @@ import { selectMessageVersion } from '../../services/chat/store.js'
 import type { Session } from '../../services/chat/types.js'
 import { closeSearchPanel } from '../search/searchPanelState.js'
 import { AssistantMessage } from './AssistantMessage.js'
+import { RichGateContext, useRichGateRoot } from './richGate.js'
 import { ScrollToBottomContext } from './scrollContext.js'
 import { UserMessage } from './UserMessage.js'
 import type { Message } from '../../services/chat/types.js'
@@ -45,6 +46,8 @@ export const MessageList = ({
   const isMobile = useIsMobile()
   const scrollRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
+  // 富内容视口门控：观察根跟随当前布局的实际滚动层（桌面 container / 移动 scroll）。
+  const richGate = useRichGateRoot(scrollRef, isMobile)
   const stickyRef = useRef(true)
   const scrollTopRef = useRef(0)
   const restoreScrollRef = useRef<{ messageId: string; top: number } | null>(null)
@@ -143,48 +146,50 @@ export const MessageList = ({
   const uploadRetryId = getUploadRetryId(messages, streaming)
   return (
     <ScrollToBottomContext.Provider value={scrollToBottom}>
-      <div
-        ref={isMobile ? undefined : scrollRef}
-        className={styles.container}
-        data-session-view={session.id}
-        data-message-scroll={isMobile ? undefined : 'true'}
-      >
+      <RichGateContext.Provider value={richGate}>
         <div
-          ref={isMobile ? scrollRef : undefined}
-          className={styles.scroll}
-          data-message-scroll={isMobile ? 'true' : undefined}
+          ref={isMobile ? undefined : scrollRef}
+          className={styles.container}
+          data-session-view={session.id}
+          data-message-scroll={isMobile ? undefined : 'true'}
         >
-          <div ref={contentRef} className={styles.column}>
-            {messages.map((message, index) =>
-              message.role === 'user' ? (
-                <UserMessage
-                  key={message.id}
-                  sessionId={session.id}
-                  message={message}
-                  retryUploadId={uploadRetryId}
-                  isFirst={index === 0}
-                  isLast={index === lastIndex || index === lastIndex - 1}
-                  busy={streaming}
-                  versions={versions.get(message.id) ?? EMPTY_VERSIONS}
-                  onSelectVersion={selectVersion}
-                />
-              ) : (
-                <AssistantMessage
-                  key={message.id}
-                  sessionId={session.id}
-                  message={message}
-                  isLast={index === lastIndex}
-                  streaming={streaming && index === lastIndex}
-                  busy={streaming}
-                  versions={versions.get(message.id) ?? EMPTY_VERSIONS}
-                  onSelectVersion={selectVersion}
-                />
-              )
-            )}
+          <div
+            ref={isMobile ? scrollRef : undefined}
+            className={styles.scroll}
+            data-message-scroll={isMobile ? 'true' : undefined}
+          >
+            <div ref={contentRef} className={styles.column}>
+              {messages.map((message, index) =>
+                message.role === 'user' ? (
+                  <UserMessage
+                    key={message.id}
+                    sessionId={session.id}
+                    message={message}
+                    retryUploadId={uploadRetryId}
+                    isFirst={index === 0}
+                    isLast={index === lastIndex || index === lastIndex - 1}
+                    busy={streaming}
+                    versions={versions.get(message.id) ?? EMPTY_VERSIONS}
+                    onSelectVersion={selectVersion}
+                  />
+                ) : (
+                  <AssistantMessage
+                    key={message.id}
+                    sessionId={session.id}
+                    message={message}
+                    isLast={index === lastIndex}
+                    streaming={streaming && index === lastIndex}
+                    busy={streaming}
+                    versions={versions.get(message.id) ?? EMPTY_VERSIONS}
+                    onSelectVersion={selectVersion}
+                  />
+                )
+              )}
+            </div>
           </div>
+          {footer}
         </div>
-        {footer}
-      </div>
+      </RichGateContext.Provider>
     </ScrollToBottomContext.Provider>
   )
 }

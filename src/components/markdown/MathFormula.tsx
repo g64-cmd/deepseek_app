@@ -1,5 +1,6 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { ensureKatex, type Katex } from '../../services/markdown/katex.js'
+import { useRichGate } from '../messages/richGate.js'
 
 /** renderToString 外层包裹的标签，组件自己渲染外层，这里切掉 */
 const KATEX_WRAPPER = {
@@ -16,7 +17,7 @@ type MathHtmlResult = {
 const noop = () => {}
 
 /** KaTeX 渲染公式；出错时保留上次成功的结果（流式中公式未写完），没有则展示原文 */
-const useMathHtml = (input: string, isInline: boolean): MathHtmlResult => {
+const useMathHtml = (input: string, isInline: boolean, enabled = true): MathHtmlResult => {
   const previousResultRef = useRef<MathHtmlResult | null>(null)
   const katexRef = useRef(ensureKatex())
   const [katex, setKatex] = useState<Katex | null>(
@@ -30,6 +31,10 @@ const useMathHtml = (input: string, isInline: boolean): MathHtmlResult => {
   }, [])
 
   return useMemo((): MathHtmlResult => {
+    if (!enabled) {
+      // 屏外（未进入预取范围）不执行排版，保留可读 TeX 原文
+      return { html: input, renderMode: 'fallback', pending: true }
+    }
     if (!katex) {
       return { html: input, renderMode: 'fallback', pending: true }
     }
@@ -44,17 +49,27 @@ const useMathHtml = (input: string, isInline: boolean): MathHtmlResult => {
     } catch {
       return previousResultRef.current ?? { html: input, renderMode: 'fallback' }
     }
-  }, [input, isInline, katex])
+  }, [input, isInline, katex, enabled])
 }
 
-export const MathBlock = memo(function MathBlock({ value }: { value: string }) {
-  const { html, renderMode, pending } = useMathHtml(value, false)
+/** 展示公式；已结束回答中屏外保留 TeX 原文，进入视口预取范围后再排版 */
+export const MathBlock = memo(function MathBlock({
+  value,
+  loading = false,
+}: {
+  value: string
+  loading?: boolean
+}) {
+  const gate = useRichGate(!loading)
+  const { html, renderMode, pending } = useMathHtml(value, false, gate.active)
   if (renderMode === 'fallback') {
     return (
       <p
+        ref={gate.setElement}
         className="ds-markdown-paragraph"
         data-rich-kind="math"
         data-rich-ready={pending ? 'false' : 'error'}
+        onFocus={gate.activate}
       >
         {html}
       </p>

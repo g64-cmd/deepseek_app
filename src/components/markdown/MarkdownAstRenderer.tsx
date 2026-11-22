@@ -166,7 +166,7 @@ const MarkdownBlockContentOrDefinitionContent = memo(
     return nodes.map((node, index) => {
       switch (node.type) {
         case 'math':
-          return <MathBlock key={index} value={node.value} />
+          return <MathBlock key={index} value={node.value} loading={loading} />
         case 'thematicBreak':
           return <hr key={index} />
         case 'blockquote':
