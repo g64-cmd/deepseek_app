@@ -22,7 +22,7 @@ const mockedModules = new Set(
     (name) => path.join(root, name)
   )
 )
-const keys = ['fetch', 'localStorage', 'document', 'requestAnimationFrame', 'cancelAnimationFrame']
+const keys = ['fetch', 'localStorage', 'document', 'window', 'requestAnimationFrame', 'cancelAnimationFrame']
 const originalGlobals = new Map(keys.map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)]))
 let api
 
@@ -38,7 +38,30 @@ before(async () => {
     },
     clear: () => storage.clear(),
   }
-  globalThis.document = { visibilityState: 'hidden' }
+  // 最小事件目标：visibilityState 保持 hidden（流式增量立即 flush，跳过 rAF），
+  // 事件方法供 bindChatPersistence 注册与用例派发 visibilitychange/pagehide
+  const makeEventTarget = () => {
+    const listeners = new Map()
+    return {
+      addEventListener(type, handler) {
+        if (!listeners.has(type)) {
+          listeners.set(type, new Set())
+        }
+        listeners.get(type).add(handler)
+      },
+      removeEventListener(type, handler) {
+        listeners.get(type)?.delete(handler)
+      },
+      dispatchEvent(event) {
+        for (const handler of listeners.get(event.type) ?? []) {
+          handler(event)
+        }
+        return true
+      },
+    }
+  }
+  globalThis.document = { visibilityState: 'hidden', ...makeEventTarget() }
+  globalThis.window = makeEventTarget()
   globalThis.requestAnimationFrame = () => 1
   globalThis.cancelAnimationFrame = () => {}
   const compiler = rspack({
@@ -329,3 +352,82 @@ test('usage cache is invalidated when saving a completed response succeeds on re
     `successful retry must invalidate cached usage; revision before=${revisionBeforeRetry}, after=${localStorage.getItem('chat-demo:usage-revision')}`
   )
 })
+
+// 同一失败恢复问题在另外两个真实保存入口（自动保存 / 重命名）下的复现：
+// 用量缓存失效不能依赖调用方标注，任意入口提交成功都必须生效
+for (const recovery of ['visibilitychange', 'rename']) {
+  test(`usage is invalidated when failed final save is recovered through ${recovery}`, async () => {
+    localStorage.clear()
+    api.runtime.sessions.clear()
+    const id = `recover-${recovery}`
+    const empty = {
+      id,
+      title: id,
+      createdAt: 1_700_000_000_000,
+      updatedAt: 1_700_000_000_000,
+      messages: [],
+    }
+    api.useChatStore.setState({
+      ready: true,
+      importingHistory: false,
+      sessions: [empty],
+      sessionCache: { [id]: empty },
+      streaming: {},
+      activeId: id,
+      sessionSaveErrors: {},
+    })
+    api.setModel('deepseek-flash')
+    api.setDraftText(id, 'A harmless persistence recovery fixture')
+    const usage = { input_tokens: 20, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, output_tokens: 10 }
+    const events = [
+      { type: 'message_start', message: { usage } },
+      { type: 'content_block_start', index: 0, content_block: { type: 'text', text: 'A harmless answer.' } },
+      { type: 'content_block_stop', index: 0 },
+      { type: 'message_delta', delta: { stop_reason: 'end_turn' }, usage },
+      { type: 'message_stop' },
+    ]
+    globalThis.fetch = async () =>
+      new Response(events.map((event) => `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`).join(''), {
+        headers: { 'Content-Type': 'text/event-stream' },
+      })
+    api.runtime.rejectCompletedSave = true
+    assert.equal(api.sendMessage(id), true)
+    for (let i = 0; i < 100 && !api.useChatStore.getState().sessionSaveErrors[id]; i++) {
+      await new Promise((resolve) => setImmediate(resolve))
+    }
+    assert.equal(api.useChatStore.getState().sessionSaveErrors[id], true)
+    assert.equal(api.useChatStore.getState().sessionCache[id].messages.at(-1).usage.output_tokens, 10)
+    // 失败期间账户面板缓存数据库旧数据（修订号未动，缓存与旧数据一致）
+    const pending = await api.getUsageSummary()
+    assert.equal(pending.replies, 0, 'the failed transaction leaves old data for the account panel to cache')
+    const revisionBefore = localStorage.getItem('chat-demo:usage-revision')
+    api.runtime.rejectCompletedSave = false
+    if (recovery === 'visibilitychange') {
+      // 真实生产监听器：切后台/离开页面触发的自动保存
+      const cleanup = api.bindChatPersistence()
+      try {
+        document.visibilityState = 'hidden'
+        document.dispatchEvent(new Event('visibilitychange'))
+      } finally {
+        cleanup()
+      }
+    } else {
+      // 已加载会话的重命名：整份会话随标题一同保存
+      assert.equal(await api.renameSession(id, 'Recovered title'), true)
+    }
+    for (let i = 0; i < 100 && api.useChatStore.getState().sessionSaveErrors[id]; i++) {
+      await new Promise((resolve) => setImmediate(resolve))
+    }
+    assert.equal(api.useChatStore.getState().sessionSaveErrors[id], undefined, 'recovery clears the production save error')
+    assert.equal(api.runtime.sessions.get(id).messages.at(-1).usage.output_tokens, 10, 'recovery commits the completed usage')
+    const cached = await api.getUsageSummary()
+    localStorage.removeItem('chat-demo:usage-summary')
+    const uncached = await api.getUsageSummary()
+    assert.equal(uncached.models['deepseek-flash']?.output, 10, 'control: reading committed data without cache is correct')
+    assert.equal(
+      cached.models['deepseek-flash']?.output,
+      10,
+      `recovery=${recovery}, revision=${revisionBefore}->${localStorage.getItem('chat-demo:usage-revision')}`
+    )
+  })
+}

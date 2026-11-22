@@ -186,12 +186,18 @@ const updateReply = (sessionId: string, reply: AssistantMessage) =>
   }))
 
 /**
- * 保存会话到 IndexedDB；失败时标记保存失败供重试。
- * usageChanged 表示本次内容含新的回复用量：在保存成功回调里递增用量修订号，
- * 保证「保存失败→缓存旧统计→重试成功」的路径也会使缓存失效（失败时数据库
- * 仍是旧数据，不提前递增，缓存在失败期间与数据保持一致）。
+ * 有尚未成功落盘的用量变化的会话：流式收尾时加入，任意保存入口（重试、切后台
+ * 自动保存、重命名等整份会话保存）提交成功后移除并使用量缓存失效。保存失败时
+ * 标记保留，数据库仍是旧数据、修订号不动，缓存在失败期间与数据保持一致。
  */
-const persist = (sessionId: string, usageChanged = false) => {
+const pendingUsageSaves = new Set<string>()
+
+/**
+ * 保存会话到 IndexedDB；失败时标记保存失败供重试。
+ * 用量缓存失效不依赖调用方标注：只要本会话还有未落盘的用量变化且本次保存成功，
+ * 就递增用量修订号——同一份含新用量的会话无论经哪个入口提交，缓存更新行为一致。
+ */
+const persist = (sessionId: string) => {
   const session = getSession(sessionId)
   if (session) {
     unsavedSessions.add(sessionId)
@@ -203,7 +209,7 @@ const persist = (sessionId: string, usageChanged = false) => {
     void db
       .saveSession(session, files)
       .then(() => {
-        if (usageChanged) {
+        if (pendingUsageSaves.delete(sessionId)) {
           bumpUsageRevision()
         }
         if (epoch !== historyEpoch || !getSession(sessionId)) {
@@ -233,10 +239,10 @@ const persist = (sessionId: string, usageChanged = false) => {
   }
 }
 
-/** 重试失败的保存：无法区分失败批次里哪些含用量，一律按含用量处理（重试低频，多失效无害） */
+/** 重试失败的保存；含未落盘用量变化的会话在保存成功时由 persist 统一失效缓存 */
 export const retrySaveSessions = () => {
   if (!get().importingHistory) {
-    unsavedSessions.forEach((id) => persist(id, true))
+    unsavedSessions.forEach(persist)
   }
 }
 
@@ -481,6 +487,7 @@ export const replaceHistory = async <T>(
     })
     // 导入/清空替换了全部会话；数量与最近更新时间可能碰巧不变，靠修订号使用量缓存失效
     bumpUsageRevision()
+    pendingUsageSaves.clear()
     return { result, count: summaries.length }
   } finally {
     set({ importingHistory: false })
@@ -1219,8 +1226,9 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
         Object.entries(state.streaming).filter(([id]) => id !== sessionId)
       ),
     }))
-    // 本轮流式可能落盘新的 usage；缓存失效在保存成功回调里发生（persist 内处理），
-    // 保存失败重试成功时同样会触发
-    persist(sessionId, true)
+    // 本轮流式可能产生新的 usage：登记待落盘标记，任意保存入口提交成功后
+    // 由 persist 统一使用量缓存失效（保存失败时标记保留）
+    pendingUsageSaves.add(sessionId)
+    persist(sessionId)
   }
 }
