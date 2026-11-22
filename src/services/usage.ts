@@ -1,4 +1,4 @@
-import type { ChatModel, MessageUsage } from './api/types.js'
+import type { MessageUsage } from './api/types.js'
 import type { SessionSummary } from './chat/types.js'
 import * as db from './chat/db.js'
 import { getModelMeta } from './models.js'
@@ -16,20 +16,24 @@ export type ModelUsage = {
 }
 
 export type UsageSummary = {
-  models: Partial<Record<ChatModel, ModelUsage>>
+  /** 允许新版归档的未知模型；所有键都必须是普通自有属性。 */
+  models: Record<string, ModelUsage>
   webSearchRequests: number
   toolSearch: number
   replies: number
 }
 
+const createModels = (): Record<string, ModelUsage> =>
+  Object.create(null) as Record<string, ModelUsage>
+
 const EMPTY_SUMMARY: UsageSummary = {
-  models: {},
+  models: createModels(),
   webSearchRequests: 0,
   toolSearch: 0,
   replies: 0,
 }
 
-const accumulate = (summary: UsageSummary, model: ChatModel, usage: MessageUsage) => {
+const accumulate = (summary: UsageSummary, model: string, usage: MessageUsage) => {
   const current = summary.models[model] ?? { input: 0, cacheRead: 0, output: 0, replies: 0 }
   current.input += usage.input_tokens + usage.cache_creation_input_tokens
   current.cacheRead += usage.cache_read_input_tokens
@@ -48,7 +52,7 @@ const accumulate = (summary: UsageSummary, model: ChatModel, usage: MessageUsage
  * 未记录模型的消息（旧版导入数据一般也不带 usage）跳过不计。
  */
 const computeUsage = async (summaries: SessionSummary[]): Promise<UsageSummary> => {
-  const summary: UsageSummary = { models: {}, webSearchRequests: 0, toolSearch: 0, replies: 0 }
+  const summary = emptyUsageSummary()
   for (const { id } of summaries) {
     const session = await db.loadSession(id)
     if (!session) {
@@ -97,7 +101,7 @@ export const estimateCostRange = (summary: UsageSummary): { min: number; max: nu
   return { min, max }
 }
 
-/** 用量数据修订号的持久 key：流式完成落盘、导入/清空/删除会话后递增 */
+/** 用量数据修订号的持久 key：会话保存成功、导入/清空/删除会话后递增 */
 const REVISION_KEY = 'chat-demo:usage-revision'
 
 const readRevision = (): number => {
@@ -133,10 +137,39 @@ const readCache = (): { signature: string; summary: UsageSummary } | null => {
       return null
     }
     const parsed = JSON.parse(raw) as { signature?: unknown; summary?: unknown }
-    if (typeof parsed.signature !== 'string' || typeof parsed.summary !== 'object') {
+    if (
+      typeof parsed.signature !== 'string' ||
+      typeof parsed.summary !== 'object' ||
+      parsed.summary === null
+    ) {
       return null
     }
-    return { signature: parsed.signature, summary: parsed.summary as UsageSummary }
+    const summary = parsed.summary as UsageSummary
+    if (!summary.models || typeof summary.models !== 'object' || Array.isArray(summary.models)) {
+      return null
+    }
+    // JSON.parse 会恢复普通对象；重新建立无原型字典，特殊模型在缓存往返后仍是普通键。
+    const models = createModels()
+    for (const [model, usage] of Object.entries(summary.models)) {
+      if (
+        !usage ||
+        typeof usage !== 'object' ||
+        ![usage.input, usage.cacheRead, usage.output, usage.replies].every(
+          (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0
+        )
+      ) {
+        return null
+      }
+      models[model] = usage
+    }
+    if (
+      ![summary.webSearchRequests, summary.toolSearch, summary.replies].every(
+        (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0
+      )
+    ) {
+      return null
+    }
+    return { signature: parsed.signature, summary: { ...summary, models } }
   } catch {
     return null
   }
@@ -175,5 +208,5 @@ export const getUsageSummary = (): Promise<UsageSummary> =>
 
 export const emptyUsageSummary = (): UsageSummary => ({
   ...EMPTY_SUMMARY,
-  models: {},
+  models: createModels(),
 })

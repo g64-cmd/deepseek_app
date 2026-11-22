@@ -198,6 +198,7 @@ export const en = {
   imageViewerSaveShare: 'Save / share',
   imageViewerSaving: 'Working…',
   imageViewerSaveFailed: 'Failed to save or share the image; try again',
+  fileSaveFailed: 'Failed to save or share the file; try again',
   deactivatedSearchTooltip: 'Search the web when necessary',
   search: 'Search',
   uploadFile: 'Upload files',

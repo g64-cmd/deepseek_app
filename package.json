@@ -1,6 +1,6 @@
 {
   "name": "chat-demo",
-  "version": "0.1.1",
+  "version": "0.1.3",
   "description": "基于 DeepSeek API 的静态聊天示例。",
   "license": "MIT",
   "private": true,
@@ -13,7 +13,7 @@
     "apk:install": "adb install -r android/app/build/outputs/apk/debug/app-debug.apk",
     "type": "tsc -p tsconfig.json",
     "lint": "oxlint src rspack.config.ts",
-    "test": "node --test tests/review/platform-regressions.test.mjs tests/review/model-guard.test.mjs tests/review/chat-regressions.test.mjs",
+    "test": "node --test tests/platform.test.mjs tests/models.test.mjs tests/chat.test.mjs tests/storage.test.mjs tests/settings.test.mjs tests/native-files.test.mjs tests/attachment-view.test.mjs tests/requests.test.mjs",
     "format": "oxfmt --write ."
   },
   "dependencies": {

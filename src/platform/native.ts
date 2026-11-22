@@ -1,5 +1,6 @@
 import { Directory, Filesystem } from '@capacitor/filesystem'
 import { Share } from '@capacitor/share'
+import { createId } from '../utils/id.js'
 import type { PlatformAdapter, SaveFileResult } from './index.js'
 
 /** Blob → 纯 base64（不含 data: 前缀）；Filesystem.writeFile 以 base64 承载二进制 */
@@ -20,11 +21,35 @@ const SINGLE_WRITE_LIMIT = 8 * 1024 * 1024
 
 /** 写入过 cache 的导出/分享文件清单：启动时按清单清理（localStorage 容错） */
 const CACHE_REGISTRY_KEY = 'chat-demo:export-cache'
+const SHARE_CACHE_DIR = 'whalechat-share'
+/** 本次进程创建的文件可能仍被接收应用读取，启动清理只处理此前进程的文件。 */
+const currentExports = new Set<string>()
+
+const isCacheName = (name: string) =>
+  name.length > 0 && name !== '.' && name !== '..' && !/[\\/]/.test(name) && !name.includes('\0')
+
+const isShareDirectory = (path: string) =>
+  path.startsWith(`${SHARE_CACHE_DIR}/`) &&
+  /^[a-zA-Z0-9-]+$/.test(path.slice(SHARE_CACHE_DIR.length + 1))
+
+const isCacheEntry = (path: string) =>
+  (isCacheName(path) && path !== SHARE_CACHE_DIR) || isShareDirectory(path)
+
+/** 展示文件名不承担缓存身份；剥除路径，防止附件名称逃出本次分享目录。 */
+const cacheFileName = (name: string) => {
+  const leaf = [...(name.split(/[\\/]/).at(-1) ?? '')]
+    .map((character) => (character.charCodeAt(0) < 32 ? '_' : character))
+    .join('')
+    .replace(/[<>:"|?*]/g, '_')
+  return isCacheName(leaf) ? leaf : 'attachment'
+}
 
 const readCacheRegistry = (): string[] => {
   try {
     const parsed: unknown = JSON.parse(localStorage.getItem(CACHE_REGISTRY_KEY) ?? '[]')
-    return Array.isArray(parsed) ? parsed.filter((name): name is string => typeof name === 'string') : []
+    return Array.isArray(parsed)
+      ? parsed.filter((name): name is string => typeof name === 'string' && isCacheEntry(name))
+      : []
   } catch {
     return []
   }
@@ -34,24 +59,61 @@ const writeCacheRegistry = (names: string[]) => {
   try {
     localStorage.setItem(CACHE_REGISTRY_KEY, JSON.stringify(names))
   } catch {
-    // 存储不可用时退回按前缀清理
+    // 存储不可用时退回专用目录与旧版导出前缀清理。
   }
+}
+
+/** 成功删除或已不存在才确认清理；其他失败保留登记供下次启动重试。 */
+const removeCacheEntry = async (path: string): Promise<boolean> => {
+  try {
+    if (isShareDirectory(path)) {
+      await Filesystem.rmdir({ path, directory: Directory.Cache, recursive: true })
+    } else {
+      await Filesystem.deleteFile({ path, directory: Directory.Cache })
+    }
+    return true
+  } catch (error) {
+    return (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      error.code === 'OS-PLUG-FILE-0008'
+    )
+  }
+}
+
+const forgetCacheEntries = (removed: Set<string>, retained: Iterable<string> = []) => {
+  // 清理期间可能有新分享登记，只移除已经确认删除的对象，不覆盖整个清单。
+  writeCacheRegistry([
+    ...new Set([...readCacheRegistry().filter((path) => !removed.has(path)), ...retained]),
+  ])
 }
 
 /** 分块写入 cache 目录：首块 writeFile、后续 appendFile（不传 encoding 按二进制追加） */
 const writeBlobToCache = async (name: string, blob: Blob): Promise<string> => {
-  const uri =
-    blob.size <= SINGLE_WRITE_LIMIT
+  const directory = `${SHARE_CACHE_DIR}/${createId()}`
+  const path = `${directory}/${cacheFileName(name)}`
+  currentExports.add(directory)
+  // 首次写入前登记：即使进程在后续分块写入中被杀，也能在下一次启动清理。
+  writeCacheRegistry([...new Set([...readCacheRegistry(), directory])])
+  try {
+    await Filesystem.mkdir({ path: directory, directory: Directory.Cache, recursive: true })
+    return blob.size <= SINGLE_WRITE_LIMIT
       ? (
           await Filesystem.writeFile({
-            path: name,
+            path,
             data: await blobToBase64(blob),
             directory: Directory.Cache,
           })
         ).uri
-      : await writeBlobChunked(name, blob)
-  writeCacheRegistry([...new Set([...readCacheRegistry(), name])])
-  return uri
+      : await writeBlobChunked(path, blob)
+  } catch (error) {
+    if (await removeCacheEntry(directory)) {
+      forgetCacheEntries(new Set([directory]))
+    }
+    currentExports.delete(directory)
+    throw error
+  }
 }
 
 const writeBlobChunked = async (name: string, blob: Blob): Promise<string> => {
@@ -72,7 +134,8 @@ const writeBlobChunked = async (name: string, blob: Blob): Promise<string> => {
  * 启动时清理历次导出/分享残留在 cache 目录的文件：优先按写入清单删（文件名不固定的
  * 附件分享也覆盖），另按历史导出前缀兜底（旧版本写入、清单丢失的残留）。
  * 不在分享结束后立刻删：「保存到文件」的 SAF 读取完成时机不可知，立即删除可能
- * 截断保存；启动时上一次会话的文件必然不再被引用。全部容错，失败不影响使用。
+ * 截断保存。本进程创建的对象保持可用，避免异步启动清理误删刚分享的文件。
+ * 专用目录兜底覆盖清单损坏/不可写，旧版文件仍按清单与备份前缀清理。
  */
 export const cleanupExportCache = async (): Promise<void> => {
   const targets = new Set(readCacheRegistry())
@@ -80,16 +143,41 @@ export const cleanupExportCache = async (): Promise<void> => {
     const { files } = await Filesystem.readdir({ path: '', directory: Directory.Cache })
     for (const file of files) {
       if (/^(deepseek_data-|whalechat-backup-)/.test(file.name)) {
-        targets.add(file.name)
+        if (isCacheName(file.name) && file.type !== 'directory') {
+          targets.add(file.name)
+        }
       }
     }
   } catch {
     // cache 目录不可读时仍尝试按清单删除
   }
-  for (const name of targets) {
-    await Filesystem.deleteFile({ path: name, directory: Directory.Cache }).catch(() => {})
+  try {
+    const { files } = await Filesystem.readdir({
+      path: SHARE_CACHE_DIR,
+      directory: Directory.Cache,
+    })
+    for (const file of files) {
+      const path = `${SHARE_CACHE_DIR}/${file.name}`
+      if (file.type === 'directory' && isShareDirectory(path)) {
+        targets.add(path)
+      }
+    }
+  } catch {
+    // 目录尚未建立或不可读时仍按清单清理。
   }
-  writeCacheRegistry([])
+  const removed = new Set<string>()
+  const retained = new Set<string>()
+  for (const path of targets) {
+    if (currentExports.has(path)) {
+      continue
+    }
+    if (await removeCacheEntry(path)) {
+      removed.add(path)
+    } else {
+      retained.add(path)
+    }
+  }
+  forgetCacheEntries(removed, retained)
 }
 
 /**

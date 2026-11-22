@@ -188,6 +188,7 @@ export const zh = {
   imageViewerSaveShare: '保存 / 分享',
   imageViewerSaving: '处理中…',
   imageViewerSaveFailed: '保存或分享图片失败，请重试',
+  fileSaveFailed: '保存或分享文件失败，请重试',
   deactivatedSearchTooltip: '按需搜索网页',
   search: '智能搜索',
   uploadFile: '上传文件',

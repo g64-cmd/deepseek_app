@@ -1,12 +1,9 @@
 import assert from 'node:assert/strict'
-import { createRequire } from 'node:module'
+import { compile, root } from './helpers/compile.mjs'
 import path from 'node:path'
 import { after, before, beforeEach, test } from 'node:test'
-import { fileURLToPath } from 'node:url'
-import { rspack } from '@rspack/core'
 
-const root = fileURLToPath(new URL('../../', import.meta.url))
-const runtimePath = path.join(root, 'tests/review/platform-runtime.cjs')
+const runtimePath = path.join(root, 'tests/helpers/runtime/platform.cjs')
 const moduleMocks = new Set(
   [
     'src/platform/native.js',
@@ -37,60 +34,8 @@ const previousGlobals = Object.fromEntries(
 let api
 
 before(async () => {
-  // Compile only the reviewed modules for Node, using the project's installed
-  // SWC loader. No app build, emulator, network, or additional packages.
-  const compiler = rspack({
-    context: root,
-    mode: 'development',
-    target: 'node',
-    devtool: false,
-    entry: './tests/review/platform-entry.ts',
-    output: {
-      path: path.join(root, 'tmp/review-platform'),
-      filename: 'review.cjs',
-      library: { type: 'commonjs2' },
-    },
-    resolve: {
-      extensions: ['.tsx', '.ts', '.js'],
-      extensionAlias: { '.js': ['.ts', '.tsx', '.js'] },
-    },
-    module: {
-      rules: [
-        {
-          test: /\.tsx?$/,
-          exclude: /node_modules/,
-          loader: 'builtin:swc-loader',
-          options: {
-            jsc: {
-              parser: { syntax: 'typescript', tsx: true },
-              transform: { react: { runtime: 'automatic' } },
-              target: 'es2022',
-            },
-          },
-        },
-        { test: /\.css$/, type: 'asset/source' },
-      ],
-    },
-    plugins: [
-      new rspack.NormalModuleReplacementPlugin(/./, (resource) => {
-        if (
-          packageMocks.has(resource.request) ||
-          moduleMocks.has(path.resolve(resource.context, resource.request))
-        )
-          resource.request = runtimePath
-      }),
-    ],
-  })
-  await new Promise((resolve, reject) =>
-    compiler.run((error, stats) => {
-      compiler.close((closeError) => {
-        if (error || closeError) reject(error ?? closeError)
-        else if (stats.hasErrors()) reject(new Error(stats.toString({ all: false, errors: true })))
-        else resolve()
-      })
-    })
-  )
-  api = createRequire(import.meta.url)(path.join(root, 'tmp/review-platform/review.cjs'))
+  const replacements = new Map([...moduleMocks, ...packageMocks].map((name) => [name, runtimePath]))
+  api = await compile('./tests/helpers/entries/platform.ts', 'platform', replacements)
   for (const key of ['document', 'Node', 'Element']) globalThis[key] = api.testRuntime[key]
 })
 

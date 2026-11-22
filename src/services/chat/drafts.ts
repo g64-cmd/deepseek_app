@@ -16,7 +16,6 @@ export type DraftAttachment = {
   id: string
   file: File
   isImage: boolean
-  previewUrl: string | null
 }
 
 type Draft = { text: string; attachments: DraftAttachment[] }
@@ -32,7 +31,9 @@ const readDraftTexts = (): Record<string, string> => {
     const parsed: unknown = JSON.parse(localStorage.getItem(DRAFT_TEXTS_KEY) ?? '{}')
     if (parsed && typeof parsed === 'object') {
       return Object.fromEntries(
-        Object.entries(parsed).filter((entry): entry is [string, string] => typeof entry[1] === 'string')
+        Object.entries(parsed).filter(
+          (entry): entry is [string, string] => typeof entry[1] === 'string'
+        )
       )
     }
   } catch {
@@ -52,6 +53,11 @@ const writeDraftTexts = (texts: Record<string, string>) => {
     // 存储不可用时只在内存生效
   }
 }
+
+const draftTextsOf = (drafts: ReadonlyMap<string | null, Draft>): Record<string, string> =>
+  Object.fromEntries(
+    [...drafts].filter(([, draft]) => draft.text).map(([id, draft]) => [String(id), draft.text])
+  )
 
 /** 未发送的文字跨进程保留（附件是上传中的临时状态，不持久化）；null 是新对话的草稿。 */
 const restoreDrafts = (): Map<string | null, Draft> => {
@@ -74,23 +80,18 @@ useDrafts.subscribe((state) => {
   }
   saveTimer = setTimeout(() => {
     saveTimer = null
-    const texts: Record<string, string> = {}
-    for (const [sessionId, draft] of state.drafts) {
-      if (draft.text) {
-        texts[String(sessionId)] = draft.text
-      }
-    }
-    writeDraftTexts(texts)
+    writeDraftTexts(draftTextsOf(state.drafts))
   }, DRAFT_SAVE_DELAY_MS)
 })
 
 export const getDraft = (sessionId: string | null): Draft =>
   useDrafts.getState().drafts.get(sessionId) ?? EMPTY_DRAFT
 
-/** 完整备份导出用：草稿文本原始表（会话 ID 为键，新对话为 'null'） */
-export const dumpDraftTexts = (): Record<string, string> => readDraftTexts()
+/** 显式导出读取当前内存快照，不依赖防抖落盘成功或定时器已触发。 */
+export const dumpDraftTexts = (): Record<string, string> =>
+  draftTextsOf(useDrafts.getState().drafts)
 
-/** 完整备份导入用：整体替换草稿文本；setState 触发既有防抖落盘 */
+/** 导入整体替换草稿，并立即尝试持久化；存储不可用时仍保留内存状态。 */
 export const restoreDraftTexts = (texts: Record<string, string>) => {
   const drafts = new Map<string | null, Draft>()
   for (const [sessionId, text] of Object.entries(texts)) {
@@ -99,6 +100,11 @@ export const restoreDraftTexts = (texts: Record<string, string>) => {
     }
   }
   useDrafts.setState({ drafts })
+  if (saveTimer) {
+    clearTimeout(saveTimer)
+    saveTimer = null
+  }
+  writeDraftTexts(draftTextsOf(drafts))
 }
 
 const updateDraft = (sessionId: string | null, update: (draft: Draft) => Draft) =>
@@ -127,7 +133,7 @@ const upload = (attachment: DraftAttachment, apiKey: string) => {
   ).catch(() => {})
 }
 
-/** 整批校验通过后才创建预览和开始上传。 */
+/** 整批校验通过后才加入草稿并开始上传。 */
 export const addDraftFiles = (
   sessionId: string | null,
   files: File[],
@@ -140,15 +146,13 @@ export const addDraftFiles = (
   if (error) {
     return error
   }
-  const added = files.map((file): DraftAttachment => {
-    const image = isImage(resolveMimeType(file))
-    return {
+  const added = files.map(
+    (file): DraftAttachment => ({
       id: createId(),
       file,
-      isImage: image,
-      previewUrl: image ? URL.createObjectURL(file) : null,
-    }
-  })
+      isImage: isImage(resolveMimeType(file)),
+    })
+  )
   updateDraft(sessionId, (draft) => ({ ...draft, attachments: [...draft.attachments, ...added] }))
   added.forEach((attachment) => upload(attachment, apiKey))
   return null
@@ -190,42 +194,32 @@ export const prepareDraftMessage = (draft: Draft, tasks: Record<string, UploadTa
   return { text, files }
 }
 
-const releaseAttachment = (attachment: DraftAttachment, cancel: boolean) => {
-  if (cancel) {
-    cancelUpload(attachment.id)
-  }
-  if (attachment.previewUrl) {
-    URL.revokeObjectURL(attachment.previewUrl)
-  }
-}
-
 export const removeDraftAttachment = (sessionId: string | null, attachmentId: string) => {
   const attachment = getDraft(sessionId).attachments.find((item) => item.id === attachmentId)
   if (!attachment) {
     return
   }
-  releaseAttachment(attachment, true)
+  cancelUpload(attachment.id)
   updateDraft(sessionId, (draft) => ({
     ...draft,
     attachments: draft.attachments.filter((item) => item.id !== attachmentId),
   }))
 }
 
-/** 发送成功后原件与 serverId 已交给会话，释放预览但保留上传完成态。 */
+/** 发送成功后原件与 serverId 已交给会话，保留上传完成态。 */
 export const clearSentDraft = (sessionId: string | null) => {
-  getDraft(sessionId).attachments.forEach((attachment) => releaseAttachment(attachment, false))
   updateDraft(sessionId, () => EMPTY_DRAFT)
 }
 
 /** 删除会话或替换历史成功后，释放尚未发送的草稿及上传任务。 */
 export const clearDraft = (sessionId: string | null) => {
-  getDraft(sessionId).attachments.forEach((attachment) => releaseAttachment(attachment, true))
+  getDraft(sessionId).attachments.forEach((attachment) => cancelUpload(attachment.id))
   updateDraft(sessionId, () => EMPTY_DRAFT)
 }
 
 export const clearAllDrafts = () => {
   for (const draft of useDrafts.getState().drafts.values()) {
-    draft.attachments.forEach((attachment) => releaseAttachment(attachment, true))
+    draft.attachments.forEach((attachment) => cancelUpload(attachment.id))
   }
   useDrafts.setState({ drafts: new Map() })
 }

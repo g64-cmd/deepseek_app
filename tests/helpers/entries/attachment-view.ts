@@ -1,0 +1,6 @@
+export { useFileView } from '../../../src/components/files/useFileView.js'
+export { MessageFile } from '../../../src/components/messages/MessageFile.js'
+export { ImageViewer } from '../../../src/components/messages/ImageViewer.js'
+export { FileCard } from '../../../src/components/files/FileCard.js'
+export { openModals, closeTopModal } from '../../../src/components/base/modalStack.js'
+export { hooks, fixture, platform } from '../runtime/attachment-view.cjs'

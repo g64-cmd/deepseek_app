@@ -8,7 +8,13 @@ import {
   getFileErrorCode,
   isRetryableApiError,
 } from '../api/errors.js'
-import { cancelUpload, describeUploadError, uploadAttachment, useUploads } from '../attachments.js'
+import {
+  cancelUpload,
+  checkImageFileIds,
+  describeUploadError,
+  uploadAttachment,
+  useUploads,
+} from '../attachments.js'
 import { markBalanceStale } from '../balance.js'
 import { supportsVision } from '../models.js'
 import { bumpUsageRevision } from '../usage.js'
@@ -115,8 +121,17 @@ const sessionAccess = new Map<string, number>()
 const unsavedSessions = new Set<string>()
 /** 保存失败时保留原件，重试成功后才释放。 */
 const pendingFiles = new Map<string, db.StoredFile[]>()
+/** 导出开始时复制待保存原件的索引；Blob 不可变，后续保存成功释放索引不会影响该快照。 */
+export const getPendingFileSnapshot = (): Map<string, Blob> =>
+  new Map(
+    [...pendingFiles.values()].flatMap((files) => files.map(({ id, blob }) => [id, blob] as const))
+  )
+
 const deletingSessions = new Set<string>()
 const deletionTasks = new Set<Promise<boolean>>()
+type RenameState = { committedTitle: string; latest: symbol; pending: number }
+const sessionRenames = new Map<string, RenameState>()
+const renameTasks = new Set<Promise<boolean>>()
 const streamFlushes = new Map<string, () => void>()
 let accessSequence = 0
 let historyEpoch = 0
@@ -186,22 +201,15 @@ const updateReply = (sessionId: string, reply: AssistantMessage) =>
   }))
 
 /**
- * 有尚未成功落盘的用量变化的会话：流式收尾时加入，任意保存入口（重试、切后台
- * 自动保存、重命名等整份会话保存）提交成功后移除并使用量缓存失效。保存失败时
- * 标记保留，数据库仍是旧数据、修订号不动，缓存在失败期间与数据保持一致。
- */
-const pendingUsageSaves = new Set<string>()
-
-/**
  * 保存会话到 IndexedDB；失败时标记保存失败供重试。
- * 用量缓存失效不依赖调用方标注：只要本会话还有未落盘的用量变化且本次保存成功，
- * 就递增用量修订号——同一份含新用量的会话无论经哪个入口提交，缓存更新行为一致。
+ * 每次有效提交成功统一失效用量缓存，不另存“待保存用量”标记：旧快照无法消费
+ * 后来生成的用量状态，失败后经任意入口重试成功都会失效。重算仍由统计查询触发。
  */
 const persist = (sessionId: string) => {
   const session = getSession(sessionId)
   if (session) {
     unsavedSessions.add(sessionId)
-    if (deletingSessions.has(sessionId)) {
+    if (deletingSessions.has(sessionId) || sessionRenames.has(sessionId)) {
       return
     }
     const epoch = historyEpoch
@@ -209,12 +217,10 @@ const persist = (sessionId: string) => {
     void db
       .saveSession(session, files)
       .then(() => {
-        if (pendingUsageSaves.delete(sessionId)) {
-          bumpUsageRevision()
-        }
-        if (epoch !== historyEpoch || !getSession(sessionId)) {
+        if (epoch !== historyEpoch || deletingSessions.has(sessionId) || !getSession(sessionId)) {
           return
         }
+        bumpUsageRevision()
         if (pendingFiles.get(sessionId) === files) {
           pendingFiles.delete(sessionId)
         }
@@ -239,7 +245,7 @@ const persist = (sessionId: string) => {
   }
 }
 
-/** 重试失败的保存；含未落盘用量变化的会话在保存成功时由 persist 统一失效缓存 */
+/** 重试失败的保存；提交成功后由 persist 统一失效用量缓存。 */
 export const retrySaveSessions = () => {
   if (!get().importingHistory) {
     unsavedSessions.forEach(persist)
@@ -458,6 +464,8 @@ export const replaceHistory = async <T>(
     }
     // 已开始的单条删除先同步到内存，避免本次替换失败后列表残留已被删除的记录。
     await Promise.all(deletionTasks)
+    // 等在途重命名结算，替换失败时也不会留下无法再回滚的旧乐观标题。
+    await Promise.all(renameTasks)
     historyEpoch += 1
     initTask = undefined
     sessionLoads.clear()
@@ -475,6 +483,7 @@ export const replaceHistory = async <T>(
     sessionAccess.clear()
     unsavedSessions.clear()
     pendingFiles.clear()
+    sessionRenames.clear()
     clearAllDrafts()
     set({
       ready: true,
@@ -487,7 +496,6 @@ export const replaceHistory = async <T>(
     })
     // 导入/清空替换了全部会话；数量与最近更新时间可能碰巧不变，靠修订号使用量缓存失效
     bumpUsageRevision()
-    pendingUsageSaves.clear()
     return { result, count: summaries.length }
   } finally {
     set({ importingHistory: false })
@@ -528,31 +536,75 @@ export const renameSession = (id: string, title: string): Promise<boolean> => {
     titleRequests.delete(controller)
   }
   if (getSession(id)) {
+    // 已加载会话的新操作接管标题状态；较早的列表重命名回调不再拥有回滚权。
+    sessionRenames.delete(id)
     updateSession(id, (session) => ({ ...session, title }))
     persist(id)
     return Promise.resolve(true)
   }
   const previous = get().sessions.find((session) => session.id === id)?.title
+  if (previous === undefined) {
+    return Promise.resolve(false)
+  }
+  const epoch = historyEpoch
+  const operation = Symbol()
+  const rename = sessionRenames.get(id) ?? {
+    committedTitle: previous,
+    latest: operation,
+    pending: 0,
+  }
+  rename.latest = operation
+  rename.pending += 1
+  sessionRenames.set(id, rename)
+  const ownsState = () =>
+    epoch === historyEpoch &&
+    sessionRenames.get(id) === rename &&
+    get().sessions.some((session) => session.id === id)
+  const restoreTitle = (value: string) => {
+    // 详情可能在请求期间加载；列表和已加载详情必须一起恢复。
+    updateSession(id, (session) => ({ ...session, title: value }))
+    set((state) => ({
+      sessions: state.sessions.map((session) =>
+        session.id === id ? { ...session, title: value } : session
+      ),
+    }))
+  }
   set((state) => ({
     sessions: state.sessions.map((session) =>
       session.id === id ? { ...session, title } : session
     ),
   }))
-  return db.renameSession(id, title).then(
-    () => true,
-    (error: unknown) => {
-      // 写入失败回滚列表标题，避免界面显示一个实际未保存的名字
-      if (previous !== undefined) {
-        set((state) => ({
-          sessions: state.sessions.map((session) =>
-            session.id === id ? { ...session, title: previous } : session
-          ),
-        }))
+  const task = db
+    .renameSession(id, title)
+    .then(
+      () => {
+        if (ownsState()) {
+          // IndexedDB 按发起顺序提交；后续失败回退到最后成功标题，不能退到失败的乐观值。
+          rename.committedTitle = title
+        }
+        return true
+      },
+      (error: unknown) => {
+        if (ownsState() && rename.latest === operation) {
+          restoreTitle(rename.committedTitle)
+        }
+        db.reportStorageError('rename session')(error)
+        return false
       }
-      db.reportStorageError('rename session')(error)
-      return false
-    }
-  )
+    )
+    .finally(() => {
+      rename.pending -= 1
+      if (rename.pending === 0 && sessionRenames.get(id) === rename) {
+        sessionRenames.delete(id)
+        // 期间加载的详情可能需要保存中断状态，等标题结算后再提交，避免写入失败的乐观名。
+        if (epoch === historyEpoch && getSession(id) && !get().importingHistory) {
+          persist(id)
+        }
+      }
+      renameTasks.delete(task)
+    })
+  renameTasks.add(task)
+  return task
 }
 
 /**
@@ -586,6 +638,7 @@ const removeSessionData = async (id: string): Promise<boolean> => {
     sessionAccess.delete(id)
     unsavedSessions.delete(id)
     pendingFiles.delete(id)
+    sessionRenames.delete(id)
     clearDraft(id)
     set((state) => ({
       sessions: state.sessions.filter((session) => session.id !== id),
@@ -673,6 +726,8 @@ export const sendMessage = (
     files: files.map(({ id, serverId, name, size, isImage, mimeType }) => ({
       id,
       serverId,
+      // 草稿附件已上传成功，每张图片都在上传前检查过长边，超限的已缩小。
+      imageSizeChecked: isImage,
       name,
       size,
       isImage,
@@ -877,8 +932,11 @@ const stripRequest = (request: Request): Request =>
     ? { ...request, history: request.history.map(stripHistoryImages) }
     : request
 
-/** 把补传得到的 serverId 写回会话里所有引用同一附件的消息（编辑、重新生成会共用附件） */
-const saveServerIds = (sessionId: string, serverIds: Map<string, string>) => {
+/**
+ * 将 serverId 写回所有引用同一附件的消息。传入 null 会清除超限旧图的 ID，触发补传。
+ * 尺寸标记随有效 ID 保存，因为本地保留的是原图，刷新后可以直接复用已检查的上传副本。
+ */
+const saveServerIds = (sessionId: string, serverIds: ReadonlyMap<string, string | null>) => {
   if (serverIds.size === 0) {
     return
   }
@@ -888,9 +946,12 @@ const saveServerIds = (sessionId: string, serverIds: Map<string, string>) => {
       message.role === 'user' && message.files.some((file) => serverIds.has(file.id))
         ? {
             ...message,
-            files: message.files.map((file) =>
-              serverIds.has(file.id) ? { ...file, serverId: serverIds.get(file.id) ?? null } : file
-            ),
+            files: message.files.map((file) => {
+              const serverId = serverIds.get(file.id)
+              return serverId === undefined
+                ? file
+                : { ...file, serverId, imageSizeChecked: file.isImage && serverId !== null }
+            }),
           }
         : message
     ),
@@ -943,6 +1004,15 @@ const refreshRequest = (sessionId: string, request: Request): Request => {
  */
 const prepareFiles = async (sessionId: string, request: Request, signal: AbortSignal) => {
   const epoch = historyEpoch
+  const isCurrent = () =>
+    epoch === historyEpoch && !deletingSessions.has(sessionId) && !!getSession(sessionId)
+  const assertCurrent = () => {
+    signal.throwIfAborted()
+    if (!isCurrent()) {
+      throw new DOMException('Session changed while preparing attachments', 'AbortError')
+    }
+  }
+  assertCurrent()
   // 服务端判定 file_id 失效时会清掉会话里的 serverId，先用最新消息替换请求快照，
   // 否则快照里仍是旧 id，补传会直接复用它。替换回的是会话原始消息，图片剔除重新应用。
   request = refreshRequest(sessionId, request)
@@ -952,20 +1022,32 @@ const prepareFiles = async (sessionId: string, request: Request, signal: AbortSi
   const aborted = new Promise<never>((_, reject) => {
     signal.addEventListener('abort', () => reject(signal.reason), { once: true })
   })
+  // 旧图片超限时先清除 ID，交给下方已有的附件补传流程。
+  const files = [
+    ...request.question.files,
+    ...getContextRounds(request.history).flatMap(([user]) => user.files),
+  ]
+  const checked = await Promise.race([checkImageFileIds(files, signal), aborted])
+  assertCurrent()
+  if (checked.size > 0) {
+    saveServerIds(sessionId, checked)
+    request = refreshRequest(sessionId, request)
+  }
   const uploads = Promise.allSettled(
     request.question.files.map(async (file) => {
       const serverId = await ensureServerId(apiKey, file)
-      if (serverId) {
+      if (serverId && serverId !== file.serverId) {
         serverIds.set(file.id, serverId)
       }
     })
   )
   void uploads.then(() => {
-    if (epoch === historyEpoch) {
+    if (isCurrent()) {
       saveServerIds(sessionId, serverIds)
     }
   })
   const results = await Promise.race([uploads, aborted])
+  assertCurrent()
   const failed = results.find((result) => result.status === 'rejected')
   if (failed) {
     throw failed.reason
@@ -983,12 +1065,13 @@ const prepareFiles = async (sessionId: string, request: Request, signal: AbortSi
     signal.throwIfAborted()
     try {
       const serverId = await Promise.race([ensureServerId(apiKey, file), aborted])
+      assertCurrent()
       if (serverId) {
         serverIds.set(file.id, serverId)
         saveServerIds(sessionId, new Map([[file.id, serverId]]))
       }
     } catch {
-      signal.throwIfAborted()
+      assertCurrent()
     }
   }
 
@@ -1226,9 +1309,6 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
         Object.entries(state.streaming).filter(([id]) => id !== sessionId)
       ),
     }))
-    // 本轮流式可能产生新的 usage：登记待落盘标记，任意保存入口提交成功后
-    // 由 persist 统一使用量缓存失效（保存失败时标记保留）
-    pendingUsageSaves.add(sessionId)
     persist(sessionId)
   }
 }

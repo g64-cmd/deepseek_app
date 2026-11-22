@@ -28,7 +28,7 @@ const json = (value: unknown) => new Blob([JSON.stringify(value)], { type: 'appl
  */
 export const exportArchive = async (
   sessions: Iterable<Session> | AsyncIterable<Session>,
-  options?: { full?: boolean; appSettings?: AppSettingsFile }
+  options?: { full?: boolean; appSettings?: AppSettingsFile; originals?: ReadonlyMap<string, Blob> }
 ): Promise<Blob> => {
   const full = options?.full === true
   const manifest: Manifest = full
@@ -46,7 +46,8 @@ export const exportArchive = async (
       }
       for (const file of message.files) {
         if (!originals.has(file.id) && (full || file.isImage)) {
-          originals.set(file.id, await db.loadFile(file.id))
+          // 保存失败时原件可能只在内存中；优先使用导出开始时捕获的 Blob。
+          originals.set(file.id, options?.originals?.get(file.id) ?? (await db.loadFile(file.id)))
         }
       }
     }
@@ -70,8 +71,5 @@ export const exportArchive = async (
   if (full && options?.appSettings) {
     entries.push({ name: APP_SETTINGS_PATH, blob: json(options.appSettings) })
   }
-  return writeArchive([
-    ...entries,
-    ...[...fileEntries].map(([name, blob]) => ({ name, blob })),
-  ])
+  return writeArchive([...entries, ...[...fileEntries].map(([name, blob]) => ({ name, blob }))])
 }

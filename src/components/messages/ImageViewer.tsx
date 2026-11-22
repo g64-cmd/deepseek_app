@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslate } from '../../i18n/index.js'
 import { platform } from '../../platform/index.js'
-import { loadFile } from '../../services/chat/db.js'
 import { openModals } from '../base/modalStack.js'
 import { Button } from '../base/Button.js'
 import { IconButton } from '../base/IconButton.js'
-import { IconCloseOutline16 } from '../base/icons.js'
+import { IconCloseOutline16, IconPhotoErrorFill20 } from '../base/icons.js'
 import { showToast } from '../base/toastState.js'
+import { useFileView } from '../files/useFileView.js'
 import styles from './ImageViewer.module.css'
 
 const ZOOM_SCALE = 2.5
@@ -17,34 +17,28 @@ const ZOOM_SCALE = 2.5
  * 放大态单指拖拽平移；底部保存/分享原件。自注册进 modalStack，
  * 系统返回键与 Esc 只关闭本层。
  */
-export const ImageViewer = ({ file, onClose }: { file: { id: string; name: string }; onClose: () => void }) => {
+export const ImageViewer = ({
+  source,
+  name,
+  onClose,
+}: {
+  source: File | string
+  name: string
+  onClose: () => void
+}) => {
   const t = useTranslate()
-  const [url, setUrl] = useState<string | null>(null)
-  const [blob, setBlob] = useState<Blob | null>(null)
+  const { url, blob } = useFileView(source, name)
+  const [failedUrl, setFailedUrl] = useState<string | null>(null)
   const [sharing, setSharing] = useState(false)
   const [zoom, setZoom] = useState({ scale: 1, x: 0, y: 0 })
   const imageRef = useRef<HTMLImageElement>(null)
-  const dragRef = useRef<{ pointer: number; startX: number; startY: number; originX: number; originY: number } | null>(null)
-
-  // 与缩略图各自独立地建立 objectUrl，卸载各自 revoke
-  useEffect(() => {
-    let objectUrl: string | null = null
-    let cancelled = false
-    void loadFile(file.id).then((original) => {
-      if (!original || cancelled) {
-        return
-      }
-      objectUrl = URL.createObjectURL(original)
-      setUrl(objectUrl)
-      setBlob(original)
-    })
-    return () => {
-      cancelled = true
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl)
-      }
-    }
-  }, [file.id])
+  const dragRef = useRef<{
+    pointer: number
+    startX: number
+    startY: number
+    originX: number
+    originY: number
+  } | null>(null)
 
   // 注册进浮层栈；onClose 引用变化不重复注册（与 Modal 相同的 ref 模式）
   const onCloseRef = useRef(onClose)
@@ -89,7 +83,7 @@ export const ImageViewer = ({ file, onClose }: { file: { id: string; name: strin
       }}
     >
       <div className={styles.header}>
-        <span className={styles.name}>{file.name}</span>
+        <span className={styles.name}>{name}</span>
         <IconButton
           tone="primary"
           icon={<IconCloseOutline16 />}
@@ -98,11 +92,12 @@ export const ImageViewer = ({ file, onClose }: { file: { id: string; name: strin
         />
       </div>
       <div className={styles.stage}>
-        {url ? (
+        {url && failedUrl !== url ? (
           <img
             ref={imageRef}
             src={url}
-            alt={file.name}
+            alt={name}
+            onError={() => setFailedUrl(url)}
             className={styles.image}
             style={{
               transform: zoom.scale === 1 ? undefined : `scale(${ZOOM_SCALE})`,
@@ -146,8 +141,12 @@ export const ImageViewer = ({ file, onClose }: { file: { id: string; name: strin
             }}
             draggable={false}
           />
-        ) : (
+        ) : url === undefined ? (
           <span className={styles.loading} />
+        ) : (
+          <span role="img" aria-label={name}>
+            <IconPhotoErrorFill20 />
+          </span>
         )}
       </div>
       <div className={styles.footer}>
@@ -161,7 +160,7 @@ export const ImageViewer = ({ file, onClose }: { file: { id: string; name: strin
             }
             setSharing(true)
             platform
-              .saveOrShareFile(file.name, blob)
+              .saveOrShareFile(name, blob)
               .then(() => {
                 // 用户收起分享面板视为取消，不算失败
               })
@@ -177,6 +176,6 @@ export const ImageViewer = ({ file, onClose }: { file: { id: string; name: strin
         </Button>
       </div>
     </div>,
-    document.body,
+    document.body
   )
 }

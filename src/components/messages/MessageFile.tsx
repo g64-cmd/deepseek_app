@@ -1,37 +1,14 @@
 import clsx from 'clsx'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslate } from '../../i18n/index.js'
-import { platform } from '../../platform/index.js'
 import { useUploads } from '../../services/attachments.js'
-import { loadFile } from '../../services/chat/db.js'
 import type { FileAttachment } from '../../services/chat/types.js'
 import { IconPhotoErrorFill20, IconRefreshOutline16 } from '../base/icons.js'
 import { Tooltip } from '../base/Tooltip.js'
 import { FileCard } from '../files/FileCard.js'
+import { useFileView } from '../files/useFileView.js'
 import { ImageViewer } from './ImageViewer.js'
 import styles from './MessageFile.module.css'
-
-/** 原件从 IndexedDB 读出并生成本地地址；undefined 表示加载中，null 表示原件缺失。 */
-const useFileUrl = (id: string) => {
-  const [fileUrl, setFileUrl] = useState<{ id: string; url: string | null } | null>(null)
-  useEffect(() => {
-    let objectUrl: string | null = null
-    let cancelled = false
-    loadFile(id).then((blob) => {
-      if (!cancelled) {
-        objectUrl = blob ? URL.createObjectURL(blob) : null
-        setFileUrl({ id, url: objectUrl })
-      }
-    })
-    return () => {
-      cancelled = true
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl)
-      }
-    }
-  }, [id])
-  return fileUrl?.id === id ? fileUrl.url : undefined
-}
 
 /** 历史或失效附件的补传状态：只在还没有 serverId 时显示 */
 const useUploadState = (file: FileAttachment) =>
@@ -58,7 +35,7 @@ export const MessageFile = ({
   onRetry: (() => void) | null
 }) => {
   const t = useTranslate()
-  const url = useFileUrl(file.id)
+  const { image, type, url, link, onOpen } = useFileView(file.id, file.name)
   const [failedUrl, setFailedUrl] = useState<string | null>(null)
   const [viewerOpen, setViewerOpen] = useState(false)
   const upload = useUploadState(file)
@@ -69,7 +46,7 @@ export const MessageFile = ({
 
   const retry = retryable ? onRetry : null
 
-  if (file.isImage && url !== null) {
+  if (image && url !== null) {
     const preview = url ? (
       failedUrl === url ? (
         <span className={styles.failedIcon} role="img" aria-label={file.name}>
@@ -137,7 +114,27 @@ export const MessageFile = ({
       )
     }
 
-    // 正常态：点击进入全屏查看（WebView 无新窗口，Web 端从新标签改为内嵌查看）
+    // SVG 只显示隔离缩略图，按文件保存或分享，不在应用页面中打开。
+    if (type === 'image/svg+xml') {
+      return link ? (
+        <a className={clsx(styles.image, styles.imageThumb)} {...link} title={file.name}>
+          {preview}
+        </a>
+      ) : (
+        <button
+          type="button"
+          className={clsx(styles.image, styles.imageThumb)}
+          title={file.name}
+          aria-label={file.name}
+          disabled={!onOpen}
+          onClick={onOpen}
+        >
+          {preview}
+        </button>
+      )
+    }
+
+    // 栅格图片继续使用内嵌查看器，避免 Android WebView 的新窗口限制。
     return url ? (
       <>
         <button
@@ -150,7 +147,7 @@ export const MessageFile = ({
           {preview}
         </button>
         {viewerOpen ? (
-          <ImageViewer file={file} onClose={() => setViewerOpen(false)} />
+          <ImageViewer source={file.id} name={file.name} onClose={() => setViewerOpen(false)} />
         ) : null}
       </>
     ) : (
@@ -166,7 +163,8 @@ export const MessageFile = ({
       status={uploading ? 'uploading' : failed ? 'error' : 'done'}
       error={errorText}
       onRetry={retry ?? undefined}
-      onOpen={url && !upload ? () => void platform.openExternal(url) : undefined}
+      link={link}
+      onOpen={onOpen}
     />
   )
 }

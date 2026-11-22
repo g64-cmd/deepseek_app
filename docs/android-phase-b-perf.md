@@ -10,7 +10,7 @@
 | WebView | System WebView 113.0.5672.136 |
 | 对照组 | 桌面 Chrome headless（`--headless=new`，同源码 dist 本地静态服务），Windows 11 |
 | 注入数据 | `scripts/perf-seed.js`（本仓库），全部合成 id 带 `perf-` 前缀，测量后已清理（`perfSeed.cleanup()`） |
-| 注入前备份 | `run-as` 打包 WebView IndexedDB 目录（tmp/perf-backup-pre-inject.tar，注入只新增未动原数据） |
+| 注入前备份 | `run-as` 打包 WebView IndexedDB 目录（当时的临时备份已清理；注入只新增未动原数据） |
 
 ## 2. 方法
 
@@ -79,7 +79,7 @@
 
 ## 7. 复现
 
-1. 启动模拟器与 App，`node tmp/perf-cdp.mjs reload && node tmp/perf-cdp.mjs eval "perfSeed.inject()"`（CDP 驱动为阶段 B 临时工具，未入库；等价手工方式：chrome://inspect 打开 WebView console 粘贴 `scripts/perf-seed.js` 后执行 `await perfSeed.inject()`、`await perfMeasure.switchTo('perf-300 条混合消息')` 等）。
+1. 启动模拟器与 App，经 chrome://inspect 打开 WebView console，粘贴 `scripts/perf-seed.js` 后执行 `await perfSeed.inject()`、`await perfMeasure.switchTo('perf-300 条混合消息')` 等。原 CDP 临时驱动已清理，不作为复现依赖。
 2. force-stop 重启后按 §2 场景依次 `switchTo` / `scrollPass`。
 3. 结束执行 `await perfSeed.cleanup()` 并重启确认 `perfSeed.stats()` 归零。
 

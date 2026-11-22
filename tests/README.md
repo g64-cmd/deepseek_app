@@ -1,0 +1,28 @@
+# 功能测试
+
+这里只保留需要持续维护的功能和数据安全测试。测试按模块组织；不保存复审轮次、提交版本对应的临时复现、诊断日志或构建产物。
+
+在仓库根目录运行：
+
+```sh
+pnpm test
+# 单独运行一个模块：
+node --test tests/requests.test.mjs
+```
+
+| 文件 | 必要覆盖 |
+| --- | --- |
+| `chat.test.mjs` | 用量提交与失败恢复、账户隔离、共享附件、备份草稿/原件/设置、未知模型导入与缓存 |
+| `storage.test.mjs` | 并发重命名、中途加载、删除/替换历史后的旧异步回调 |
+| `models.test.mjs` | 模型图片能力限制、持久化模型与思考强度的输入校验 |
+| `requests.test.mjs` | 图片缩放及上传表单、旧图补传、仅文字请求、取消、原图保留、回复链接过滤 |
+| `attachment-view.test.mjs` | MIME/SVG 处理、URL 生命周期、文件交付、图片查看器与浮层行为 |
+| `native-files.test.mjs` | 分享文件身份、分块字节、写入/清理失败恢复、启动清理与并发分享 |
+| `settings.test.mjs` | 设置分组的界面点击与程序导航 |
+| `platform.test.mjs` | Android 返回层级与外链/引用点击 |
+
+`helpers/entries/` 只负责导出被测生产模块；`helpers/runtime/` 提供存储、浏览器和平台边界替身。`helpers/compile.mjs` 共用项目现有 Rspack，将测试编译到系统临时目录中的独立子目录，在测试结束后自动清理，不向项目 `tmp/` 写入。测试不安装依赖、不读取用户凭据、不调用真实 API。
+
+当前共 **66 项**。存储测试可控制事务提交顺序及失败；图片测试只模拟解码/canvas 边界；平台测试检查参数和字节。这些覆盖不代表真机、真实 React 调度、Android 接收应用或真实 API 验证。
+
+新增测试文件时需更新 `package.json` 的 `test` 命令。保留明确的文件列表，保证 Windows 与 CI 使用相同的测试入口。

@@ -1,8 +1,5 @@
 import { formatDate } from '../../utils/format.js'
-import {
-  isChatModel,
-  isEffortLevel,
-} from '../models.js'
+import { isChatModel, isEffortLevel } from '../models.js'
 import { normalizeLocation } from '../location.js'
 import {
   setLocale,
@@ -18,7 +15,7 @@ import {
 } from '../settings.js'
 import * as db from './db.js'
 import { dumpDraftTexts, restoreDraftTexts } from './drafts.js'
-import { replaceHistory, useChatStore } from './store.js'
+import { getPendingFileSnapshot, replaceHistory, useChatStore } from './store.js'
 import type { Session } from './types.js'
 import type { AppSettingsFile } from './history/format.js'
 import type { ArchiveKind } from './history/format.js'
@@ -91,9 +88,9 @@ const applyAppSettings = (payload: AppSettingsFile) => {
   if (settings.tts_voice === 'stella' || settings.tts_voice === 'tide') {
     setTtsVoice(settings.tts_voice)
   }
-  // 位置信息损坏（无法归一化）时保持本机设置
+  // null 是合法的「未设置」，不能与无法归一化的非空坏数据混为一类。
   const location = normalizeLocation(settings.location)
-  if (location) {
+  if (settings.location === null || location) {
     setLocation(location)
   }
   setThinking(settings.thinking)
@@ -111,9 +108,11 @@ const applyAppSettings = (payload: AppSettingsFile) => {
 /** 导出为历史会话导出格式的 ZIP，可再次导入。 */
 export const exportHistory = (): Promise<{ name: string; blob: Blob }> =>
   enqueueBackup(async () => {
-    const { exportArchive } = await import('./history/exportArchive.js')
     const now = new Date()
-    const blob = await exportArchive(readSessions())
+    const sessions = readSessions()
+    const originals = getPendingFileSnapshot()
+    const { exportArchive } = await import('./history/exportArchive.js')
+    const blob = await exportArchive(sessions, { originals })
     return { name: backupFileName(now), blob }
   })
 
@@ -123,9 +122,13 @@ export const exportHistory = (): Promise<{ name: string; blob: Blob }> =>
  */
 export const exportFullBackup = (): Promise<{ name: string; blob: Blob }> =>
   enqueueBackup(async () => {
-    const { exportArchive } = await import('./history/exportArchive.js')
     const now = new Date()
-    const blob = await exportArchive(readSessions(), { full: true, appSettings: buildAppSettings() })
+    // 同步捕获会话、草稿、设置和待落盘原件。后续保存成功清空 pendingFiles 不影响这份备份。
+    const sessions = readSessions()
+    const originals = getPendingFileSnapshot()
+    const appSettings = buildAppSettings()
+    const { exportArchive } = await import('./history/exportArchive.js')
+    const blob = await exportArchive(sessions, { full: true, appSettings, originals })
     return { name: fullBackupFileName(now), blob }
   })
 
@@ -141,9 +144,7 @@ export const checkArchiveKind = (file: File): Promise<ArchiveKind> =>
  * 通过后从 ZIP 流式写入暂存，成功才替换原有会话与附件原件。
  * 完整备份在替换成功后应用设置与草稿（逐项校验，失败只跳过对应项）。
  */
-export const importHistory = (
-  file: File
-): Promise<{ count: number; restoredSettings: boolean }> =>
+export const importHistory = (file: File): Promise<{ count: number; restoredSettings: boolean }> =>
   enqueueBackup(async () => {
     const { checkArchiveFormat, importArchive } = await import('./history/importArchive.js')
     await checkArchiveFormat(file)
