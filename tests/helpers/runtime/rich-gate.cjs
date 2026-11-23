@@ -135,5 +135,3 @@ exports.ensureKatex = () => ({
     return `<span class="katex">katex(${input})</span>`
   },
 })
-// TEMP DEBUG
-exports.debugSlots = () => slots

@@ -13,7 +13,7 @@ import { branchShape } from '../scripts/perf/branch-shape.mjs'
 test('C0 fixture counts describe actual code, formula and graph payloads', () => {
   const manifest = describeFixture(buildFixture())
   const mixed = manifest.sessions.find((s) => s.id === PREFIX + 'mixed')
-  assert.equal(manifest.sessions.length, 1006)
+  assert.equal(manifest.sessions.length, 1007)
   assert.deepEqual(
     [mixed.messages, mixed.codeBlocks, mixed.codeLines, mixed.displayMath, mixed.mermaid],
     [300, 30, 24000, 240, 30]
@@ -22,6 +22,12 @@ test('C0 fixture counts describe actual code, formula and graph payloads', () =>
   assert.deepEqual(
     [heavy.messages, heavy.users, heavy.assistants, heavy.mermaid, heavy.displayMath],
     [50, 25, 25, 13, 96]
+  )
+  // 长尾场景：单条回答开头两条屏外公式 + 末尾可见公式，无代码/图表
+  const longtail = manifest.sessions.find((s) => s.id === PREFIX + 'longtail')
+  assert.deepEqual(
+    [longtail.messages, longtail.users, longtail.assistants, longtail.displayMath],
+    [2, 1, 1, 3]
   )
   assert.deepEqual(buildFixture(), buildFixture())
   assert.deepEqual(randomBytes(100), randomBytes(100))
@@ -138,8 +144,8 @@ test('C0 injection commits only the full fixture and rolls back failed storage',
   const fixture = buildFixture()
   const db = database()
   await installFixture(db, fixture)
-  assert.equal(db.committed.filter((write) => write.name === 'sessions').length, 1006)
-  assert.equal(db.committed.filter((write) => write.name === 'sessionSummaries').length, 1006)
+  assert.equal(db.committed.filter((write) => write.name === 'sessions').length, 1007)
+  assert.equal(db.committed.filter((write) => write.name === 'sessionSummaries').length, 1007)
   const failing = database({ failAdd: true })
   await assert.rejects(installFixture(failing, fixture), /Injected storage failure/)
   assert.equal(failing.committed.length, 0)
@@ -204,6 +210,61 @@ test('C0 tail readiness ignores historical geometry and waits for tail attachmen
     assert.equal(visibleState('fixture', 'tail').ready, true)
     image.naturalWidth = 0
     assert.equal(visibleState('fixture', 'tail').ready, false)
+  } finally {
+    if (descriptor) {
+      Object.defineProperty(globalThis, 'document', descriptor)
+    } else {
+      delete globalThis.document
+    }
+    if (cssDescriptor) {
+      Object.defineProperty(globalThis, 'CSS', cssDescriptor)
+    } else {
+      delete globalThis.CSS
+    }
+  }
+})
+
+test('C0 tail readiness waits for visible rich blocks but not off-screen gated ones', () => {
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'document')
+  const cssDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'CSS')
+  globalThis.CSS = { escape: (value) => value }
+  const rich = (rect, ready, gated) => ({
+    dataset: gated ? { richReady: ready, richGated: 'true' } : { richReady: ready },
+    getBoundingClientRect: () => rect,
+  })
+  // 同一条长回答末轮：开头公式远在视口上方（门控源码形态），末尾公式可见
+  const offscreenGated = rich({ height: 60, top: -3296, bottom: -3236 }, 'false', true)
+  const visibleReady = rich({ height: 60, top: 100, bottom: 160 }, 'true')
+  const visibleGated = rich({ height: 60, top: 300, bottom: 360 }, 'false', true)
+  const tail = {
+    dataset: { messageRole: 'assistant' },
+    getBoundingClientRect: () => ({ top: 40, bottom: 500 }),
+    querySelectorAll: (selector) =>
+      selector === '[data-rich-kind]'
+        ? [offscreenGated, visibleReady, visibleGated]
+        : selector === 'img'
+          ? []
+          : [],
+  }
+  const view = { querySelector: () => tail }
+  const scroll = {
+    scrollTop: 3000,
+    getBoundingClientRect: () => ({ height: 600, top: 0, bottom: 600 }),
+  }
+  globalThis.document = {
+    fonts: { status: 'loaded' },
+    querySelector: (selector) => (selector.includes('data-message-scroll') ? scroll : view),
+  }
+  try {
+    const state = visibleState('fixture', 'tail')
+    assert.equal(state.ready, false, 'a visible gated block is still pending')
+    assert.equal(state.pending, 1)
+    assert.equal(state.rich, 2, 'only visible rich blocks are waited on')
+    assert.equal(state.richOffscreen, 1, 'off-screen gated block is excluded, not missing')
+    visibleGated.dataset.richReady = 'true'
+    const ready = visibleState('fixture', 'tail')
+    assert.equal(ready.ready, true, 'off-screen gated block no longer blocks tail readiness')
+    assert.equal(ready.richOffscreen, 1)
   } finally {
     if (descriptor) {
       Object.defineProperty(globalThis, 'document', descriptor)

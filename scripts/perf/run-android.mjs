@@ -65,6 +65,7 @@ const report = {
   samples: [],
   scroll: [],
   memory: [],
+  memoryRounds: [],
   startup: [],
   trace: null,
   stages: { matrix: 'not-run', memory: 'not-run', trace: 'not-run' },
@@ -185,11 +186,11 @@ let scenarioInfo
 const controlId = 'c0-v1-list-0000'
 const tailOf = (id) => scenarioInfo.find((s) => s.id === id).tailId
 async function select(id, windowMs = 3000) {
-  const result = await cdp.evaluate(
-    `perfC0.switchTo(${JSON.stringify(id)},${JSON.stringify(tailOf(id))},{windowMs:${windowMs}})`
+  // settleInside：每次切换的长任务观察覆盖到已启动增强任务结束（探针 v4），
+  // 窗口之后的主线程阻塞计入该样本统计。
+  return cdp.evaluate(
+    `perfC0.switchTo(${JSON.stringify(id)},${JSON.stringify(tailOf(id))},{windowMs:${windowMs},settleInside:true})`
   )
-  await cdp.evaluate(`perfC0.settle(${JSON.stringify(id)})`)
-  return result
 }
 async function control() {
   if (!(await cdp.evaluate(`!!document.querySelector('[data-session-view="${controlId}"]')`))) {
@@ -333,8 +334,10 @@ try {
     `fixture ${scenarioInfo.length} sessions; ${(report.manifest.originalBytes / 1048576).toFixed(1)} MiB originals`
   )
   await launch()
-  const names = String(options.scenarios ?? 'text,mixed,heavy,images,branches').split(',')
-  if (names.some((name) => !['text', 'mixed', 'heavy', 'images', 'branches'].includes(name))) {
+  const names = String(options.scenarios ?? 'text,mixed,heavy,images,branches,longtail').split(',')
+  if (
+    names.some((name) => !['text', 'mixed', 'heavy', 'images', 'branches', 'longtail'].includes(name))
+  ) {
     throw new Error('Unknown C0 scenario')
   }
   const scenarios = names.map((name) => 'c0-v1-' + name)
@@ -394,9 +397,28 @@ try {
     await sleep(10_000)
     await memory('round-0')
     for (let n = 1; n <= 20; n++) {
-      await select('c0-v1-mixed', 0)
-      await select('c0-v1-images', 0)
-      log(`memory round trip ${n}/20 complete`)
+      // 逐轮保存切换与长任务结果（观察覆盖整轮操作，见 select 的 settleInside），
+      // “20 轮无冻结”以这组数据为证据，不再借用矩阵样本。
+      const summarizeSwitch = (sample) => ({
+        sessionId: sample.sessionId,
+        tailPaintProxyMs: sample.tailPaintProxyMs,
+        observedUntilMs: sample.observedUntilMs,
+        longtasks: {
+          count: sample.longtasks?.count ?? 0,
+          maxMs: sample.longtasks?.maxMs ?? 0,
+          totalMs: sample.longtasks?.totalMs ?? 0,
+          blockingMs: sample.longtasks?.blockingMs ?? 0,
+        },
+      })
+      const mixed = summarizeSwitch(await select('c0-v1-mixed', 0))
+      const images = summarizeSwitch(await select('c0-v1-images', 0))
+      report.memoryRounds.push({ round: n, mixed, images })
+      await save()
+      log(
+        `memory round trip ${n}/20 complete (maxTask=${Math.round(
+          Math.max(mixed.longtasks.maxMs, images.longtasks.maxMs)
+        )}ms)`
+      )
       if ([5, 10, 20].includes(n)) {
         await sleep(10_000)
         await memory(`round-${n}`)

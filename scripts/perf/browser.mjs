@@ -1,5 +1,5 @@
 /** Browser-side C0 measurement. No API calls; imported over CDP into the isolated app. */
-export const MEASUREMENT_VERSION = 3
+export const MEASUREMENT_VERSION = 4
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 const frame = () => new Promise((resolve) => requestAnimationFrame(resolve))
 const paintOpportunity = async () => {
@@ -149,7 +149,15 @@ export function visibleState(sessionId, tailId) {
   // historical rich block, even when hundreds of them are outside the viewport.
   const previous = tail.previousElementSibling
   const rows = previous?.dataset.messageRole === 'user' ? [previous, tail] : [tail]
-  const rich = rows.flatMap((row) => [...row.querySelectorAll('[data-rich-kind]')])
+  const intersects = (element) => {
+    const rect = element.getBoundingClientRect()
+    return rect.height > 0 && rect.bottom > bounds.top && rect.top < bounds.bottom
+  }
+  const richAll = rows.flatMap((row) => [...row.querySelectorAll('[data-rich-kind]')])
+  // 可见尾部就绪（v4）：同一回答开头的富内容可能留在屏外并保持门控源码形态，
+  // 它们不算未就绪；视口内的块无论门控中还是增强中都仍需等待。富内容块随
+  // 消息同步挂载（不同于异步附件），按视口过滤没有"未挂载漏计"问题。
+  const rich = richAll.filter(intersects)
   const images = rows.flatMap((row) => [...row.querySelectorAll('img')])
   const missingImages = rows
     .filter((row) => row.dataset.imageCount)
@@ -169,9 +177,10 @@ export function visibleState(sessionId, tailId) {
     errors,
     pending,
     rich: rich.length,
+    richOffscreen: richAll.length - rich.length,
     images: images.length,
     missingImages,
-    scope: 'tail-round',
+    scope: 'tail-round-visible',
     scrollTop: scroll.scrollTop,
     tailTop: tailBounds.top,
   }
@@ -191,7 +200,11 @@ export async function settle(sessionId, timeoutMs = 180_000) {
   }
 }
 
-export async function switchTo(sessionId, tailId, { windowMs = 3000, timeoutMs = 180_000 } = {}) {
+export async function switchTo(
+  sessionId,
+  tailId,
+  { windowMs = 3000, timeoutMs = 180_000, settleInside = false } = {}
+) {
   if (viewOf(sessionId)) {
     throw new Error('C0 switch requires a different current session')
   }
@@ -214,7 +227,17 @@ export async function switchTo(sessionId, tailId, { windowMs = 3000, timeoutMs =
     if (tailPaintProxyMs < windowMs) {
       await sleep(windowMs - tailPaintProxyMs)
     }
-    const end = performance.now()
+    const windowEnd = performance.now()
+    // v4 settleInside：长任务观察延伸到本次已启动增强任务结束，窗口之后的
+    // 主线程阻塞计入统计；尾部可读时间的定义不变。
+    let settleEnd = null
+    if (settleInside) {
+      await settle(sessionId, timeoutMs)
+      await paintOpportunity()
+      settleEnd = performance.now()
+    }
+    const end = settleEnd ?? windowEnd
+    const settleUntilMs = settleEnd === null ? null : settleEnd - start
     const observation = await finish(start, end)
     const view = viewOf(sessionId)
     return {
@@ -222,8 +245,9 @@ export async function switchTo(sessionId, tailId, { windowMs = 3000, timeoutMs =
       shellPaintProxyMs,
       tailPaintProxyMs,
       targetWindowMs: windowMs,
-      actualWindowMs: end - start,
-      windowOverrunMs: Math.max(0, end - start - windowMs),
+      actualWindowMs: windowEnd - start,
+      windowOverrunMs: Math.max(0, windowEnd - start - windowMs),
+      ...(settleInside ? { settleUntilMs, observedUntilMs: end - start } : {}),
       visible: visibleState(sessionId, tailId),
       domNodes: view.querySelectorAll('*').length,
       renderedMessages: view.querySelectorAll('[data-message-id]').length,

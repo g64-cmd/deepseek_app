@@ -67,6 +67,27 @@ export function summarize(report) {
     },
     scroll: report.scroll,
     memory: report.memory,
+    memoryRounds:
+      report.memoryRounds?.length
+        ? {
+            rounds: report.memoryRounds.length,
+            note: 'Per-round switch results during the 20-round memory loop; long-task observation covers each full operation (probe v4 settleInside).',
+            perSession: Object.fromEntries(
+              ['mixed', 'images'].map((key) => {
+                const samples = report.memoryRounds.map((round) => round[key]).filter(Boolean)
+                return [
+                  key,
+                  {
+                    rounds: samples.length,
+                    tailPaintProxyMs: stats(samples.map((s) => s.tailPaintProxyMs)),
+                    maxLongtaskMs: stats(samples.map((s) => s.longtasks?.maxMs)),
+                    totalBlockingMs: samples.reduce((n, s) => n + (s.longtasks?.blockingMs ?? 0), 0),
+                  },
+                ]
+              })
+            ),
+          }
+        : null,
     memoryProtocol: report.memoryProtocol ?? null,
     trace: report.trace,
     ...(report.error ? { error: report.error } : {}),

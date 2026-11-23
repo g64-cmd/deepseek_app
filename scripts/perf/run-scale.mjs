@@ -222,7 +222,7 @@ try {
     const button=[...top.querySelectorAll('button')].find(b=>/导入|Import/.test(b.textContent));
     if(!button)throw new Error('C0 import confirmation missing');
     const importStart=performance.now();button.click();
-    await perfC0.waitFor(()=>/已导入 1,?006|Imported 1,?006/.test(document.querySelector('[role="tabpanel"]')?.textContent??''),180000);
+    await perfC0.waitFor(()=>/已导入 1,?007|Imported 1,?007/.test(document.querySelector('[role="tabpanel"]')?.textContent??''),180000);
     return{zipBytes:blob.size,cacheReadMs:readMs,restoreMs:performance.now()-importStart,totalMs:performance.now()-started,viaDOMFileInput:true};
   })()`
   )
@@ -241,7 +241,7 @@ try {
     const branch=await read('sessions','c0-v1-branches');
     const branchesMatch=JSON.stringify(shapeModule.branchShape(branch))===JSON.stringify(expectedShape);
     const result={sessionCount:await count('sessions'),summaryCount:await count('sessionSummaries'),fileCount:await count('files'),branchMessageCount:branch.messages.length,branchesMatch,files};
-    result.passed=result.sessionCount===1006&&result.summaryCount===1006&&result.fileCount===6&&result.branchMessageCount===10&&branchesMatch&&files.every(f=>f.matches);
+    result.passed=result.sessionCount===1007&&result.summaryCount===1007&&result.fileCount===6&&result.branchMessageCount===10&&branchesMatch&&files.every(f=>f.matches);
     db.close();return result;
   })()`)
   if (!report.validation.passed) {

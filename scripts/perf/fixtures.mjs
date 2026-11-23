@@ -105,6 +105,20 @@ export function buildFixture() {
   alternate[0].parentId = branches.messages[1].id
   branches.messages.push(...alternate)
   const backup = rounds('backup', 1, text)
+  // 单条长回答：开头两条公式远离视口（保持门控源码形态），长正文之后以一条
+  // 可见公式与文字收尾——覆盖“尾部可见就绪不应等待屏外门控块”的探针口径。
+  const longtail = linear('longtail', 'C0 longtail', [
+    user('longtail-u0', 0),
+    assistant(
+      'longtail-a0',
+      1,
+      '$$\nA_{offscreen,1} = \\alpha + \\frac{\\beta}{\\gamma}\n$$\n\n' +
+        '$$\nA_{offscreen,2} = \\sum_{k=0}^{n} q_k x^k\n$$\n\n' +
+        Array(60).fill(filler).join('\n\n') +
+        '\n\n$$\nZ_{visible} = \\int_0^1 f(x)\\,dx\n$$\n\n' +
+        filler
+    ),
+  ])
   const list = Array.from({ length: 1000 }, (_, n) => {
     const session = rounds(`list-${String(n).padStart(4, '0')}`, 1, text)
     session.createdAt = FIXTURE_TIME - DAY * 2 - n * 60_000
@@ -121,6 +135,7 @@ export function buildFixture() {
       rounds('heavy', 25, (n) => (n % 2 ? math(n) : mermaid(n))),
       images,
       branches,
+      longtail,
       backup,
       ...list,
     ],
