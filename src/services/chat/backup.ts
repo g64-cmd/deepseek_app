@@ -3,6 +3,7 @@ import { isChatModel, isEffortLevel } from '../models.js'
 import { normalizeLocation } from '../location.js'
 import {
   setLocale,
+  setDocParseMode,
   setModel,
   setLocation,
   setSearch,
@@ -67,6 +68,7 @@ const buildAppSettings = (): AppSettingsFile => {
       sider_collapsed: state.siderCollapsed,
       model: state.model,
       thinking_effort: state.thinkingEffort,
+      doc_parse_mode: state.docParseMode,
     },
     drafts: dumpDraftTexts(),
   }
@@ -101,6 +103,9 @@ const applyAppSettings = (payload: AppSettingsFile) => {
   }
   if (isEffortLevel(settings.thinking_effort)) {
     setThinkingEffort(settings.thinking_effort)
+  }
+  if (settings.doc_parse_mode === 'text' || settings.doc_parse_mode === 'rich') {
+    setDocParseMode(settings.doc_parse_mode)
   }
   restoreDraftTexts(payload.drafts)
 }

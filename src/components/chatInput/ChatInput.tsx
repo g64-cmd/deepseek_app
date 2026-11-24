@@ -11,14 +11,24 @@ import {
   IconThinkOutline16,
   IconWarningOutline16,
 } from '../base/icons.js'
-import { setModel, setSearch, setThinking, useSettings } from '../../services/settings.js'
+import {
+  setDocBillingAcked,
+  setDocParseMode,
+  setModel,
+  setSearch,
+  setThinking,
+  useSettings,
+  type DocParseMode,
+} from '../../services/settings.js'
 import { useIsMobile } from '../../app/viewport.js'
 import {
+  countContextDocuments,
   countContextImages,
   sendMessage,
   stopReply,
   useChatStore,
 } from '../../services/chat/store.js'
+import { MAX_REQUEST_DOCUMENTS } from '../../services/chat/reply.js'
 import {
   addDraftFiles,
   EMPTY_DRAFT,
@@ -39,7 +49,14 @@ import { ensureApiKey } from '../settings/settingsDialogState.js'
 import { DragMask, useFileDrop } from './DragMask.js'
 import { showToast } from '../base/toastState.js'
 import { MODEL_METAS, supportsVision } from '../../services/models.js'
-import { ACCEPT, isImage as isImageFile, useUploads } from '../../services/attachments.js'
+import {
+  ACCEPT,
+  isImage as isImageFile,
+  isLayoutDocument,
+  resolveMimeType,
+  validateFiles,
+  useUploads,
+} from '../../services/attachments.js'
 import { DraftAttachments } from './DraftAttachments.js'
 import { useVoiceInput } from './useVoiceInput.js'
 import { VoiceButton } from './VoiceButton.js'
@@ -69,6 +86,8 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
   const model = useSettings((state) => state.model)
   /** V4 Pro 携带图片时的发送确认；draft/history 分别为草稿与上下文历史中的图片数 */
   const [imageConfirm, setImageConfirm] = useState<{ draft: number; history: number } | null>(null)
+  const [documentFiles, setDocumentFiles] = useState<File[] | null>(null)
+  const [parseMode, setParseMode] = useState<DocParseMode>(useSettings.getState().docParseMode)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const togglesRef = useRef<HTMLDivElement>(null)
@@ -95,13 +114,38 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
       return
     }
     // 当前模型不支持图片时不允许添加，避免用户整理好文字后才发现发不出去
-    if (!supportsVision(useSettings.getState().model) && files.some((file) => isImageFile(file.type))) {
+    if (
+      !supportsVision(useSettings.getState().model) &&
+      files.some((file) => isImageFile(file.type))
+    ) {
       showToast({ key: 'modelNoVisionImageRejected' })
       return
     }
-    const error = addDraftFiles(sessionId, files, useSettings.getState().apiKey ?? '')
+    const draft = getDraft(sessionId)
+    const error = validateFiles(files, draft.attachments.length)
     if (error) {
       showToast(error)
+      return
+    }
+    const count =
+      countContextDocuments(sessionId) +
+      draft.attachments.filter((file) => !file.isImage).length +
+      files.filter((file) => !isImageFile(resolveMimeType(file))).length
+    if (count > MAX_REQUEST_DOCUMENTS) {
+      showToast({ key: 'replyDocLimit', params: { count }, type: 'error' })
+      return
+    }
+    if (
+      files.some((file) => isLayoutDocument(file.name)) &&
+      !useSettings.getState().docBillingAcked
+    ) {
+      setParseMode(useSettings.getState().docParseMode)
+      setDocumentFiles(files)
+      return
+    }
+    const uploadError = addDraftFiles(sessionId, files, useSettings.getState().apiKey ?? '')
+    if (uploadError) {
+      showToast(uploadError)
     }
   }
   const retryFile = useCallback(
@@ -152,8 +196,7 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
 
   // 排队、上传中或上传失败的附件都留在输入框，全部上传成功后才能发送；
   // 当前模型不支持图片而草稿里仍有图片（如切换模型后遗留）时同样不能直接发送
-  const draftImagesBlocked =
-    !supportsVision(model) && attachments.some((file) => file.isImage)
+  const draftImagesBlocked = !supportsVision(model) && attachments.some((file) => file.isImage)
   const canSend =
     !importingHistory && !streaming && voice.status === 'idle' && draftReady && !draftImagesBlocked
 
@@ -217,6 +260,8 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
           ref={textareaRef}
           className={clsx(styles.textarea, recording && isMobile && styles.textareaHidden)}
           placeholder={t('chatInputPlaceholderChat')}
+          aria-label={t('chatInputLabel')}
+          data-focus-fallback
           rows={2}
           // 移动端不自动聚焦，避免一打开就弹出键盘
           autoFocus={!isMobile}
@@ -361,6 +406,57 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
         </div>
       </div>
       {dragging ? <DragMask /> : null}
+      {documentFiles ? (
+        <Modal
+          title={t('docBillingTitle')}
+          className={styles.documentDialog}
+          mainClassName={styles.documentMain}
+          onClose={() => setDocumentFiles(null)}
+          footer={
+            <>
+              <Button variant="outlined" onClick={() => setDocumentFiles(null)}>
+                {t('cancel')}
+              </Button>
+              <Button
+                disabled={importingHistory}
+                onClick={() => {
+                  if (useChatStore.getState().importingHistory || !ensureApiKey()) {
+                    return
+                  }
+                  setDocParseMode(parseMode)
+                  setDocBillingAcked(true)
+                  const selected = documentFiles
+                  setDocumentFiles(null)
+                  acceptFiles(selected)
+                }}
+              >
+                {t('docBillingConfirm')}
+              </Button>
+            </>
+          }
+        >
+          <p>{t('docBillingDescription')}</p>
+          <ul className={styles.documentFiles}>
+            {documentFiles.map((file, index) => (
+              <li key={index}>{file.name}</li>
+            ))}
+          </ul>
+          <fieldset className={styles.documentMode}>
+            <legend>{t('settingsDocParseMode')}</legend>
+            {(['text', 'rich'] as const).map((mode) => (
+              <label key={mode}>
+                <input
+                  type="radio"
+                  name="doc-parse-mode"
+                  checked={parseMode === mode}
+                  onChange={() => setParseMode(mode)}
+                />
+                {t(mode === 'text' ? 'docParseModeText' : 'docParseModeRich')}
+              </label>
+            ))}
+          </fieldset>
+        </Modal>
+      ) : null}
       {imageConfirm ? (
         <Modal
           title={t('modelImageConfirmTitle')}

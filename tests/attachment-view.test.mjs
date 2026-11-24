@@ -2,12 +2,13 @@ import assert from 'node:assert/strict'
 import path from 'node:path'
 import { after, before, beforeEach, test } from 'node:test'
 import { root, compile } from './helpers/compile.mjs'
+import dom from './helpers/dom.cjs'
 
 let api, runtime
 const created = new Map(),
   revoked = []
 const listeners = new Map()
-const keys = ['FileReader', 'document']
+const keys = ['FileReader', 'document', 'HTMLElement']
 const originals = new Map(
   keys.map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)])
 )
@@ -34,8 +35,10 @@ const attachment = (name, values = {}) => ({
   ...values,
 })
 before(async () => {
+  globalThis.HTMLElement = dom.TestHTMLElement
   globalThis.document = {
-    body: {},
+    body: new dom.TestHTMLElement(),
+    querySelector: () => null,
     addEventListener(type, handler) {
       if (!listeners.has(type)) listeners.set(type, new Set())
       listeners.get(type).add(handler)
@@ -270,12 +273,14 @@ test('full-screen viewer remains in the shared modal stack and Escape only close
   assert.equal(api.openModals.length, 1)
   const upper = { close() {} }
   api.openModals.push(upper)
-  for (const handler of listeners.get('keydown')) handler({ key: 'Escape' })
+  for (const handler of listeners.get('keydown'))
+    handler({ key: 'Escape', preventDefault() {}, stopImmediatePropagation() {} })
   assert.equal(closes, 0)
   api.openModals.pop()
   assert.equal(api.closeTopModal(), true)
   assert.equal(closes, 1)
-  for (const handler of listeners.get('keydown')) handler({ key: 'Escape' })
+  for (const handler of listeners.get('keydown'))
+    handler({ key: 'Escape', preventDefault() {}, stopImmediatePropagation() {} })
   assert.equal(closes, 2)
   api.hooks.cleanup()
   assert.equal(api.openModals.length, 0)

@@ -3,6 +3,7 @@ import type { ApiErrorKind } from '../api/client.js'
 import type {
   ChatModel,
   EffortLevel,
+  FilePurpose,
   MessageUsage,
   ServerToolBlock,
   StopDetails,
@@ -26,6 +27,11 @@ export type FileAttachment = {
   isImage: boolean
   /** 具体 MIME；导入时没有原件或无法识别的为空字符串，不影响图片身份。 */
   mimeType: string
+  /**
+   * 上传时使用的解析方式（图片为 null）。缺省的旧数据在补传时按扩展名推导，
+   * 推导结果与历史行为一致（版面文档 rich_layout_recognition，其余 user_data）。
+   */
+  purpose?: FilePurpose | null
 }
 
 /** 本地消息的分支关系；字段缺省时按线性消息列表处理。 */
@@ -91,6 +97,8 @@ export type AssistantMessage = MessageBranch & {
   /** 是否允许作为续写前缀；仍需满足回复状态与内容限制。 */
   prefix: boolean
   status: ReplyStatus
+  /** 用户在本条回复的请求中明确省略的附件；附件原件与消息元数据不删除。 */
+  omittedFileIds?: string[]
   /** 可识别的内容块按接收顺序排列；续写产生的块追加在已有块之后 */
   blocks: ReplyBlock[]
   stopReason?: StopReason
@@ -98,13 +106,22 @@ export type AssistantMessage = MessageBranch & {
   /** 最近一次请求的用量，续写后更新 */
   usage?: MessageUsage
   error?: {
-    /** upload：发送前补传附件失败，请求没有发出 */
-    kind: ApiErrorKind | 'upload'
+    /**
+     * upload：发送前补传附件失败，请求没有发出；
+     * docLimit：最终请求引用的文档数超过 20，请求没有发出；
+     * reparse：导入或失效文档需要重新解析，可能再次按页计费，等待用户明确重试；
+     * contextMissing：附件没有可用 ID 且原件缺失或补传失败，等待重试或明确省略
+     */
+    kind: ApiErrorKind | 'upload' | 'docLimit' | 'reparse' | 'contextMissing'
     message: string
     status?: number
     localMessage?: TranslationMessage
     /** 仅 upload：重新上传是否可能成功（网络、限流、服务端繁忙）；过大、格式不支持为 false */
     retryable?: boolean
+    /** reparse/contextMissing：待授权解析或本次可明确省略的附件本地 ID。 */
+    fileIds?: string[]
+    /** 解析提示产生时的 ID 快照；确认旧提示只能撤销仍匹配的失效 ID。null 表示尚未上传。 */
+    reparseFiles?: { id: string; serverId: string | null }[]
   }
 }
 

@@ -22,6 +22,7 @@ exports.useState = (initial) => {
   ]
 }
 exports.useRef = (value) => ({ current: value })
+exports.useId = () => 'fixture-settings'
 exports.useEffect = exports.useLayoutEffect = exports.useDebugValue = () => {}
 exports.useMemo = (callback) => callback()
 exports.useCallback = (callback) => callback

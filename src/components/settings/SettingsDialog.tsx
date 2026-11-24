@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { useRef, useState, type ReactNode } from 'react'
+import { useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import {
   IconAccountOutline16,
   IconDarkOutline16,
@@ -25,6 +25,7 @@ import { useChatStore } from '../../services/chat/store.js'
 import { regionCodes, getRegionName, provinces } from '../../services/location.js'
 import {
   isChineseBrowser,
+  setDocParseMode,
   setLocale,
   setLocation,
   setModel,
@@ -32,6 +33,7 @@ import {
   setThemePreference,
   setTtsVoice,
   useSettings,
+  type DocParseMode,
   type ThemePreference,
 } from '../../services/settings.js'
 import { MODEL_METAS } from '../../services/models.js'
@@ -76,8 +78,16 @@ const sections: { value: SettingsSection; label: TranslationKey; icon: ReactNode
 
 const SettingsContent = () => {
   const t = useTranslate()
+  const tabsId = useId()
   const isMobile = useIsMobile()
   const section = useSettingsDialog((state) => state.section)
+  const focusTab = useRef(false)
+  useLayoutEffect(() => {
+    if (focusTab.current) {
+      document.getElementById(`${tabsId}-${section}`)?.focus()
+      focusTab.current = false
+    }
+  }, [section, tabsId])
   // 切换分组不丢失正在输入的 API Key 与导入状态
   const apiKeyEditor = useApiKeyEditor()
   const historyImport = useHistoryImport()
@@ -97,22 +107,56 @@ const SettingsContent = () => {
           }
         }}
       >
-        <div role="tablist" className={styles.navigation}>
+        <div
+          role="tablist"
+          aria-label={t('settings')}
+          aria-orientation={isMobile ? 'horizontal' : 'vertical'}
+          className={styles.navigation}
+        >
           {sections.map((item) => (
             <button
               key={item.value}
               type="button"
               role="tab"
+              id={`${tabsId}-${item.value}`}
+              aria-controls={`${tabsId}-panel`}
+              tabIndex={section === item.value ? 0 : -1}
               aria-selected={section === item.value}
               className={clsx(styles.navItem, section === item.value && styles.navItemActive)}
               onClick={() => setSettingsSection(item.value)}
+              onKeyDown={(event) => {
+                const previous = isMobile ? 'ArrowLeft' : 'ArrowUp'
+                const next = isMobile ? 'ArrowRight' : 'ArrowDown'
+                let index = sections.findIndex((entry) => entry.value === item.value)
+                if (event.key === previous) {
+                  index = (index + sections.length - 1) % sections.length
+                } else if (event.key === next) {
+                  index = (index + 1) % sections.length
+                } else if (event.key === 'Home') {
+                  index = 0
+                } else if (event.key === 'End') {
+                  index = sections.length - 1
+                } else {
+                  return
+                }
+                event.preventDefault()
+                focusTab.current = true
+                setSettingsSection(sections[index].value)
+                document.getElementById(`${tabsId}-${sections[index].value}`)?.focus()
+              }}
             >
               {item.icon}
               {t(item.label)}
             </button>
           ))}
         </div>
-        <div role="tabpanel" className={styles.content}>
+        <div
+          role="tabpanel"
+          id={`${tabsId}-panel`}
+          aria-labelledby={`${tabsId}-${section}`}
+          tabIndex={0}
+          className={styles.content}
+        >
           {section === 'general' ? (
             <>
               <ThemeSetting />
@@ -121,6 +165,7 @@ const SettingsContent = () => {
               <LocationSetting />
               <ModelSetting />
               <ThinkingEffortSetting />
+              <DocParseModeSetting />
             </>
           ) : section === 'account' ? (
             <>
@@ -175,7 +220,7 @@ const DeleteAllConfirm = ({
         <div className={styles.deleteActions} aria-busy={historyDelete.busy}>
           <Button
             variant="outlined"
-            autoFocus
+            data-initial-focus
             disabled={historyDelete.busy}
             onClick={historyDelete.cancel}
           >
@@ -365,6 +410,31 @@ const ModelSetting = () => {
   )
 }
 
+/** 文档解析方式：决定之后上传的版面文档交给模型的内容；已上传的附件沿用保存的 purpose */
+const DocParseModeSetting = () => {
+  const t = useTranslate()
+  const docParseMode = useSettings((state) => state.docParseMode)
+  const options: { value: DocParseMode; label: string }[] = [
+    { value: 'text', label: t('docParseModeText') },
+    { value: 'rich', label: t('docParseModeRich') },
+  ]
+  return (
+    <SettingCell
+      label={t('settingsDocParseMode')}
+      description={t('settingsDocParseModeDescription')}
+      status={null}
+      action={
+        <Select
+          ariaLabel={t('settingsDocParseMode')}
+          value={docParseMode}
+          options={options}
+          onChange={setDocParseMode}
+        />
+      }
+    />
+  )
+}
+
 /** 思考强度：仅深度思考开启时随请求携带（output_config.effort），每条回复单独快照 */
 const ThinkingEffortSetting = () => {
   const t = useTranslate()
@@ -485,6 +555,7 @@ const themeOptions: { value: ThemePreference; label: TranslationKey; icon: React
  */
 const ThemeSetting = () => {
   const t = useTranslate()
+  const name = useId()
   const themePreference = useSettings((state) => state.themePreference)
   const label = t('avatarMenuSettingsDialogThemeItemLabel')
   return (
@@ -492,20 +563,24 @@ const ThemeSetting = () => {
       {label}
       <div role="radiogroup" aria-label={label} className={styles.themeOptions}>
         {themeOptions.map((option) => (
-          <button
+          <label
             key={option.value}
-            type="button"
-            role="radio"
-            aria-checked={themePreference === option.value}
             className={clsx(
               styles.themeOption,
               themePreference === option.value && styles.themeOptionSelected
             )}
-            onClick={() => setThemePreference(option.value)}
           >
+            <input
+              className="sr-only"
+              type="radio"
+              name={name}
+              value={option.value}
+              checked={themePreference === option.value}
+              onChange={() => setThemePreference(option.value)}
+            />
             {option.icon}
             {t(option.label)}
-          </button>
+          </label>
         ))}
       </div>
     </div>
@@ -543,7 +618,10 @@ const SettingCell = ({
       <div className={styles.text}>
         <div className={styles.label}>{label}</div>
         {status || description ? (
-          <div className={clsx(styles.description, status?.error && styles.error)}>
+          <div
+            data-setting-description
+            className={clsx(styles.description, status?.error && styles.error)}
+          >
             {status
               ? t(status.key, status.reason ? { message: t(status.reason) } : status.params)
               : description}

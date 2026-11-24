@@ -1,6 +1,21 @@
 import type { zh } from './zh.js'
 
 export const en = {
+  chatInputLabel: 'Message',
+  userMessageLabel: 'You',
+  assistantMessageLabel: 'Assistant',
+  citationSource: 'Source {index}: {title}',
+  sessionMore: 'More actions for conversation “{title}”',
+  replyStatusGenerating: 'Assistant is generating a response',
+  replyStatusDone: 'Assistant response completed',
+  replyStatusStopped: 'Generation stopped',
+  replyStatusFailed: 'Response failed. Review the message for details and available actions.',
+  imageViewerZoomIn: 'Zoom in',
+  imageViewerReset: 'Zoom out to original size',
+  imageViewerPanLeft: 'Move image left',
+  imageViewerPanRight: 'Move image right',
+  imageViewerPanUp: 'Move image up',
+  imageViewerPanDown: 'Move image down',
   welcomeMessageChat250808: 'How can I help you?',
   contentCaveat: 'AI-generated, for reference only',
   expandSiderbarButton: 'Open sidebar',
@@ -16,8 +31,28 @@ export const en = {
   settings: 'Settings',
   appName: 'API usage demo',
   deleteSessionModalContentTitle: 'Delete chat?',
+  settingsDocParseMode: 'Document parsing',
+  settingsDocParseModeDescription:
+    'Applies to newly added PDF, Word and PowerPoint files. Existing attachments keep their original mode. Successful parsing is billed per page; chat references also use input tokens.',
+  docParseModeText: 'Text only (excludes embedded images)',
+  docParseModeRich: 'Text and images',
+  docBillingTitle: 'Upload and parse documents',
+  docBillingDescription:
+    'PDF, Word and PowerPoint are parsed during upload. Successful parsing is billed per page, even before you send a chat. Parsing may finish and be charged after cancellation or disconnection. Reuploading may incur another parsing charge. Reusing a successful file ID avoids another parsing charge; chat references still use input tokens.',
+  docBillingConfirm: 'Accept charges and upload',
+  replyDocLimit:
+    'This request references {count} documents; the limit is 20, including history and repeated references. Remove attachments or start a new chat. The server checks the 8 MiB limit on parsed text.',
+  docLimitBlocked:
+    'This request exceeds 20 documents, including history and repeated references. Remove attachments or start a new chat.',
+  replyFileExpiredReparse:
+    '{count} documents need to be uploaded and parsed again, which may incur another per-page charge. No reupload or chat retry has started. Cancellation cannot guarantee that parsing already started on the server is free.',
+  docReparseConfirm: 'Accept possible charges and retry',
+  replyContextMissing:
+    '{count} attachments have no usable file ID and their originals are missing or failed to upload: {names}. No chat request was sent. Retry or explicitly continue without these attachments for this request.',
+  contextRetry: 'Retry attachments',
+  contextOmit: 'Continue without these attachments',
   deleteSessionWithFilesDescription:
-    'This chat and its uploaded files will be permanently deleted and cannot be recovered. Delete this chat?',
+    'This removes the local chat and attachment originals no longer referenced by other chats. Server files remain and may be used by other keys or clients on your account; check those references before remote cleanup. Delete the local chat?',
   cancel: 'Cancel',
   delete: 'Delete',
   sessionItemMenuRenameOption: 'Rename',
@@ -163,7 +198,7 @@ export const en = {
   deleteAllSessions: 'Delete all chats',
   deleteAllSessionsModalTitle: 'Once deleted, all chats will be cleared and cannot be recovered.',
   deleteAllSessionsModalDescription:
-    'Locally saved attachments and unsent drafts will also be deleted.',
+    'Locally saved attachments and unsent drafts will also be deleted. Server files remain and may be used by other keys or clients on your account.',
   historyDeleting: 'Deleting...',
   historyDeleted: 'Successfully deleted.',
   historyDeleteFailed: 'Failed to delete chats. Please try again.',
@@ -210,9 +245,10 @@ export const en = {
   uploadParseFailed: 'Parsing failed',
   uploadFileCountLimit: 'Uploaded file limit reached ({limit} files). ',
   uploadStorageLimit: 'Uploaded file storage limit reached ({limit} GB). ',
-  uploadDeleteFiles: 'Delete files',
+  uploadDeleteFiles: 'Account files and cleanup guidance',
   dragFileToUpload: 'Drop files here to upload',
-  dragFileDesc: 'Up to {count} files, {size} MB each',
+  dragFileDesc:
+    'Up to {count} attachments: images {size} MiB, PDF/Word/PPT 100 MiB, other documents 32 MiB. Requests allow 20 documents including history.',
   voiceInput: 'Voice input',
   voiceInputTimer: 'Recording {seconds}s',
   voiceInputStop: 'Stop recording and transcribe',

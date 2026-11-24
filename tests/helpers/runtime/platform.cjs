@@ -1,5 +1,7 @@
 // Minimal DOM / plugin boundaries. The test bundle executes the production
 // Modal, CitationLink, back-button handler and external-link delegate unchanged.
+const { TestHTMLElement, attachRef } = require('../dom.cjs')
+const layouts = []
 const state = {
   settings: { open: false },
   sider: { open: false },
@@ -36,7 +38,8 @@ class TestElement extends TestNode {
 
 const listeners = new Map()
 const document = {
-  body: {},
+  body: new TestHTMLElement(),
+  querySelector: () => null,
   addEventListener(name, handler, capture = false) {
     const handlers = listeners.get(name) ?? []
     handlers.push({ handler, capture })
@@ -53,7 +56,7 @@ const document = {
 const closeSettings = () => {
   state.settings.open = false
 }
-const jsx = (type, props) => ({ type, props })
+const jsx = attachRef
 const emptyComponent = () => null
 
 module.exports = {
@@ -93,6 +96,9 @@ module.exports = {
   useEffect(effect) {
     state.effects.push(effect())
   },
+  useLayoutEffect(effect) {
+    layouts.push(effect)
+  },
   useId: () => 'review-modal',
   useRef: (current) => ({ current }),
   createPortal: (node) => node,
@@ -104,6 +110,10 @@ module.exports = {
     document,
     Node: TestNode,
     Element: TestElement,
+    HTMLElement: TestHTMLElement,
+    flushLayouts() {
+      for (const effect of layouts.splice(0)) state.effects.push(effect())
+    },
     closeSettings,
     reset() {
       for (const cleanup of state.effects.splice(0).reverse()) cleanup?.()
@@ -116,7 +126,8 @@ module.exports = {
       state.exits = 0
     },
     escape() {
-      for (const { handler } of [...(listeners.get('keydown') ?? [])]) handler({ key: 'Escape' })
+      for (const { handler } of [...(listeners.get('keydown') ?? [])])
+        handler({ key: 'Escape', preventDefault() {}, stopImmediatePropagation() {} })
     },
     back() {
       for (const handler of state.backListeners) handler({ canGoBack: false })

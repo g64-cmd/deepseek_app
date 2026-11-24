@@ -185,8 +185,7 @@ export const canContinueReply = (reply: AssistantMessage): boolean => {
     return false
   }
   return (
-    reply.status === 'stopped' ||
-    (reply.status === 'done' && reply.stopReason === 'max_tokens')
+    reply.status === 'stopped' || (reply.status === 'done' && reply.stopReason === 'max_tokens')
   )
 }
 
@@ -345,3 +344,36 @@ export const toRequestMessages = (
 /** 思考用时（秒），至少 1 秒 */
 export const getThinkingSeconds = (startedAt: number, endedAt: number) =>
   Math.max(1, Math.round((endedAt - startedAt) / 1000))
+
+/** 官方限制：每个请求最多引用 20 个文档；文字合计 8 MiB 只能由服务端判定 */
+export const MAX_REQUEST_DOCUMENTS = 20
+
+/**
+ * 待补齐请求的文档块数：提问自身 + 上下文轮次的非图片附件。
+ * 同一附件在多轮出现按多次计，与官方「同一 file_id 引用多次按多次计算」一致。
+ * 缺失附件先等待用户选择；明确省略后须重新计数，再开始付费补传。
+ */
+export const countRequestDocuments = (
+  history: Message[],
+  question: UserMessage,
+  resolvedOnly = false
+): number => {
+  const documents = (files: FileAttachment[]) =>
+    files.filter((file) => !file.isImage && (!resolvedOnly || !!file.serverId)).length
+  let count = documents(question.files)
+  for (const [user] of getContextRounds(history)) {
+    count += documents(user.files)
+  }
+  return count
+}
+
+/** 组装完成的请求里实际会发出的文档块数（最终守卫，丢弃的附件自然不计） */
+export const countDocumentBlocks = (messages: MessageParam[]): number =>
+  messages.reduce(
+    (count, message) =>
+      count +
+      (typeof message.content === 'string'
+        ? 0
+        : message.content.filter((block) => block.type === 'document').length),
+    0
+  )

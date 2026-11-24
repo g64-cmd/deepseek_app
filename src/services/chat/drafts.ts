@@ -1,21 +1,27 @@
 import { create } from 'zustand'
 import type { TranslationMessage } from '../../i18n/index.js'
 import { createId } from '../../utils/id.js'
+import type { FilePurpose } from '../api/types.js'
 import {
   cancelUpload,
   isImage,
+  isLayoutDocument,
   resolveMimeType,
   uploadAttachment,
   validateFiles,
   type UploadTask,
 } from '../attachments.js'
+import { useSettings } from '../settings.js'
 import type { FileAttachment } from './types.js'
+import { MAX_REQUEST_DOCUMENTS } from './reply.js'
 
 export type DraftAttachment = {
   /** 本地标识，也是 IndexedDB 原件与上传任务的 key */
   id: string
   file: File
   isImage: boolean
+  /** 上传目的在加入草稿时确定：版面文档按当前解析方式，图片为 null */
+  purpose: FilePurpose | null
 }
 
 type Draft = { text: string; attachments: DraftAttachment[] }
@@ -129,8 +135,21 @@ const upload = (attachment: DraftAttachment, apiKey: string) => {
     attachment.id,
     attachment.file,
     attachment.file.name,
-    attachment.isImage
+    attachment.purpose
   ).catch(() => {})
+}
+
+/** 上传目的：图片不传 purpose；版面文档按当前解析方式；其余非图片文件按 user_data。 */
+const purposeOf = (file: File): FilePurpose | null => {
+  if (isImage(resolveMimeType(file))) {
+    return null
+  }
+  if (isLayoutDocument(file.name)) {
+    return useSettings.getState().docParseMode === 'text'
+      ? 'text_recognition'
+      : 'rich_layout_recognition'
+  }
+  return 'user_data'
 }
 
 /** 整批校验通过后才加入草稿并开始上传。 */
@@ -146,11 +165,25 @@ export const addDraftFiles = (
   if (error) {
     return error
   }
+  const documents =
+    getDraft(sessionId).attachments.filter((file) => !file.isImage).length +
+    files.filter((file) => !isImage(resolveMimeType(file))).length
+  if (documents > MAX_REQUEST_DOCUMENTS) {
+    return { key: 'replyDocLimit', params: { count: documents } }
+  }
+  // 文件加入草稿即会上传；必须在这一边界确认，而不是等聊天发送时再提示。
+  if (
+    files.some((file) => isLayoutDocument(file.name)) &&
+    !useSettings.getState().docBillingAcked
+  ) {
+    return { key: 'docBillingDescription' }
+  }
   const added = files.map(
     (file): DraftAttachment => ({
       id: createId(),
       file,
       isImage: isImage(resolveMimeType(file)),
+      purpose: purposeOf(file),
     })
   )
   updateDraft(sessionId, (draft) => ({ ...draft, attachments: [...draft.attachments, ...added] }))
@@ -188,6 +221,7 @@ export const prepareDraftMessage = (draft: Draft, tasks: Record<string, UploadTa
       size: attachment.file.size,
       isImage: attachment.isImage,
       mimeType: resolveMimeType(attachment.file),
+      purpose: attachment.purpose,
       blob: attachment.file,
     })
   }

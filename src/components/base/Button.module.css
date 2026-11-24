@@ -10,6 +10,7 @@
   font: inherit;
   font-size: 14px;
   line-height: 22px;
+  min-height: calc(1.5em + 12px);
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
@@ -26,6 +27,12 @@
   &:disabled {
     opacity: 0.45;
     cursor: not-allowed;
+  }
+}
+
+@media (pointer: coarse) {
+  .button {
+    min-height: 44px;
   }
 }
 

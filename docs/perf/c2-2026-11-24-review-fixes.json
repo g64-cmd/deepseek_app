@@ -1,0 +1,286 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-24",
+  "timezone": "Asia/Shanghai",
+  "review": "tmp/develop-review-phase-c2-46a223f-worktree.md",
+  "base": "46a223f",
+  "status": "C2-R01 through C2-R05 fixed; target-device acceptance remains pending",
+  "checks": {
+    "node": {
+      "passed": 115,
+      "total": 115,
+      "log": "tmp/c2-r-tests.log"
+    },
+    "browser": {
+      "passed": 17,
+      "total": 17,
+      "log": "tmp/c2-r-browser.log",
+      "environment": {
+        "protocolVersion": "1.3",
+        "product": "Chrome/154.0.8037.98",
+        "revision": "@b859317bf11f6be47f9b7799ec690a0a42a1fb33",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+        "jsVersion": "15.4.80.20"
+      },
+      "actualCssVerified": true,
+      "cssResponses": [
+        {
+          "pathname": "/app.css",
+          "status": 200
+        },
+        {
+          "pathname": "/app.css",
+          "status": 200
+        },
+        {
+          "pathname": "/app.css",
+          "status": 200
+        },
+        {
+          "pathname": "/app.css",
+          "status": 200
+        },
+        {
+          "pathname": "/app.css",
+          "status": 200
+        },
+        {
+          "pathname": "/app.css",
+          "status": 200
+        },
+        {
+          "pathname": "/app.css",
+          "status": 200
+        },
+        {
+          "pathname": "/app.css",
+          "status": 200
+        },
+        {
+          "pathname": "/app.css",
+          "status": 200
+        },
+        {
+          "pathname": "/app.css",
+          "status": 200
+        },
+        {
+          "pathname": "/app.css",
+          "status": 200
+        },
+        {
+          "pathname": "/app.css",
+          "status": 200
+        },
+        {
+          "pathname": "/app.css",
+          "status": 200
+        },
+        {
+          "pathname": "/app.css",
+          "status": 200
+        },
+        {
+          "pathname": "/app.css",
+          "status": 200
+        },
+        {
+          "pathname": "/app.css",
+          "status": 200
+        },
+        {
+          "pathname": "/app.css",
+          "status": 200
+        },
+        {
+          "pathname": "/app.css",
+          "status": 200
+        }
+      ],
+      "observations": [
+        {
+          "name": "setting descriptions",
+          "count": 3
+        },
+        {
+          "name": "backdrop click",
+          "point": {
+            "x": 356,
+            "y": 120
+          },
+          "closed": true
+        },
+        {
+          "name": "long image at 200%",
+          "geometry": {
+            "image": {
+              "x": 312,
+              "y": 125,
+              "width": 240,
+              "height": 120,
+              "bottom": 245
+            },
+            "save": {
+              "x": 538.71875,
+              "y": 276,
+              "width": 170.546875,
+              "height": 62,
+              "bottom": 338
+            },
+            "close": {
+              "x": 822,
+              "y": 40,
+              "width": 28,
+              "height": 28,
+              "bottom": 68
+            },
+            "name": {
+              "x": 20,
+              "y": 10,
+              "width": 790,
+              "height": 88,
+              "bottom": 98
+            },
+            "fullName": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW.png",
+            "label": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW.png",
+            "scrollable": true
+          }
+        }
+      ],
+      "isolatedPerCaseReload": true,
+      "pointerHitTestBeforeDispatch": true
+    },
+    "reviewReproduction": {
+      "passed": 2,
+      "total": 2,
+      "log": "tmp/c2-r-independent/test-output.txt",
+      "observations": [
+        {
+          "name": "historical branch status",
+          "before": "",
+          "after": "",
+          "streaming": false
+        },
+        {
+          "name": "drawer backdrop",
+          "x": 356,
+          "y": 120,
+          "maskInert": false,
+          "width": 412,
+          "drawerRight": 300,
+          "drawerStillOpen": false
+        },
+        {
+          "name": "long image at 200%",
+          "nameBytes": 244,
+          "before": {
+            "height": 360,
+            "width": 864,
+            "image": {
+              "top": 122.984375,
+              "bottom": 242.984375,
+              "height": 120,
+              "width": 240
+            },
+            "save": {
+              "top": 294,
+              "bottom": 338,
+              "height": 44,
+              "width": 100.28125
+            },
+            "header": {
+              "top": 0,
+              "bottom": 85.984375,
+              "height": 85.984375,
+              "width": 864
+            },
+            "overlay": {
+              "top": 0,
+              "bottom": 360,
+              "height": 360,
+              "width": 864
+            },
+            "overflow": "visible"
+          },
+          "after": {
+            "height": 360,
+            "width": 864,
+            "image": {
+              "top": 125,
+              "bottom": 245,
+              "height": 120,
+              "width": 240
+            },
+            "save": {
+              "top": 276,
+              "bottom": 338,
+              "height": 62,
+              "width": 170.546875
+            },
+            "header": {
+              "top": 0,
+              "bottom": 108,
+              "height": 108,
+              "width": 864
+            },
+            "overlay": {
+              "top": 0,
+              "bottom": 360,
+              "height": 360,
+              "width": 864
+            },
+            "overflow": "visible"
+          }
+        },
+        {
+          "name": "coarse pointer modal footer",
+          "coarse": true,
+          "height": 44,
+          "minHeight": "44px"
+        }
+      ],
+      "adaptations": "Copied original review fixture; updated entry path and new drawer panel/backdrop geometry selectors only. Original review evidence unchanged."
+    },
+    "type": "passed",
+    "lint": "passed",
+    "productionWebAndCapacitorSync": "passed",
+    "normalDebug": {
+      "passed": true,
+      "seconds": 17,
+      "tasks": 184,
+      "log": "tmp/c2-r-android-build.log"
+    }
+  },
+  "apk": {
+    "path": "android/app/build/outputs/apk/debug/app-debug.apk",
+    "packageId": "com.g64_cmd.whalechat",
+    "sha256": "9d7da3a1e3305755da6973ef147efd65e9a59fa779802f452d5b7dbbe87e682e"
+  },
+  "screenshots": [
+    "tmp/c2-r-browser/drawer-open.png",
+    "tmp/c2-r-browser/image-100.png",
+    "tmp/c2-r-browser/image-200.png"
+  ],
+  "sourceHashes": {
+    "src/app/App.tsx": "dfbeb31a0861f3b4a146314ee6bc441aef99deed5b77992102e8bf59f98c4737",
+    "src/components/sider/Sider.tsx": "67248d7ef7a030c51de1bf04bb5ffafcb8227b67fc806a558ab48c37af8cb778",
+    "src/components/messages/ImageViewer.tsx": "6c60e557383a6e3027f661c7cb575c5c7312460c9823a1a4fe9d368b66e62cc8",
+    "src/components/messages/ImageViewer.module.css": "9d6cf953c24a2660347c2c1840c23d736dfe6215dbe70a311d1f0c2595abacbe",
+    "src/components/messages/ReplyStatus.tsx": "95f33206295afb39864f1c0a59d368a615d619b78405f716652813384abac0a1",
+    "src/components/messages/MessageList.tsx": "f4fa86495162946582ea4c7a02f13a91acc999050e061910b0334fe8c65d21fe",
+    "src/components/settings/SettingsDialog.tsx": "093afc9c5199151712c7d57486b035d544ec499ac81abd0456cf3cc788312e72",
+    "src/components/base/Modal.module.css": "26ad0c4687e966c9de5b417f429018a466ed8bb4ff4654db77d0ad59338e1e72",
+    "tests/accessibility-browser.test.mjs": "cfddd8df4057abe0ea188141f85e07e1829b478d856fe4c7c482b12dad0da79f",
+    "tests/helpers/entries/accessibility.tsx": "5551e79d4d905c39722e08aa86abfb0e08b43bc255b7ad5051115e1c820537b5"
+  },
+  "limits": [
+    "No Android emulator run in this fix batch; previous C2 simulator data belongs to its older APK",
+    "No TalkBack listening or target hardware acceptance",
+    "No real API/key/paid requests",
+    "No C1 performance matrix rerun"
+  ],
+  "corrects": {
+    "file": "c2-2026-11-24-accessibility.json",
+    "browserValidity": "Historical 12/12 did not load application CSS and is not evidence of styled layout/interaction acceptance; preserved as reported with invalidForStyledLayout correction"
+  }
+}

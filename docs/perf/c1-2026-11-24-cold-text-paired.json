@@ -1,0 +1,224 @@
+{
+  "date": "2026-11-24",
+  "timezone": "Asia/Shanghai",
+  "scope": "current C1+C4 worktree compared with archived C0 APK; no rendering code changes",
+  "measurementVersion": 4,
+  "scenario": "c0-v1-text",
+  "protocol": "6 process-cold samples per APK; baseline/current/current/baseline repeated 3 times; same fixture, device, v4 probe, OS/disk caches retained; trace samples excluded",
+  "environment": {
+    "android": "14",
+    "api": "34",
+    "fingerprint": "google/sdk_gphone64_x86_64/emu64xa:14/UE1A.230829.050/12077443:userdebug/dev-keys",
+    "abi": "x86_64",
+    "display": "Physical size: 1080x2400",
+    "density": "Physical density: 420",
+    "webview": "Current WebView Update Service state\r\n  Multiprocess enabled: true\r\n  Current WebView package (name, version): (com.google.android.webview, 113.0.5672.136)\r\n  Minimum targetSdkVersion: 33\r\n  Minimum WebView version code: 567263637\r\n  Number of relros started: 1\r\n  Number of relros finished: 1\r\n  WebView package dirty: false\r\n  Any WebView package installed: true\r\n  Preferred WebView package (name, version): (com.google.android.webview, 113.0.5672.136)\r\n  WebView packages:\r\n    Valid package com.google.android.webview (versionName: 113.0.5672.136, versionCode: 567263637, targetSdkVersion: 34) is  installed/enabled for all users\r\n    com.google.android.webview.beta is NOT installed.\r\n    com.google.android.webview.dev is NOT installed.\r\n    com.google.android.webview.canary is NOT installed.\r\n    com.google.android.webview.debug is NOT installed.\r\n    com.android.webview is NOT installed.",
+    "emulator": true,
+    "browser": {
+      "protocolVersion": "1.3",
+      "product": "Chrome/113.0.5672.136",
+      "revision": "@2d54072eb2f350d37f3f304c4ba0fafcddbd7e82",
+      "userAgent": "Mozilla/5.0 (Linux; Android 14; sdk_gphone64_x86_64 Build/UE1A.230829.050; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/113.0.5672.136 Mobile Safari/537.36",
+      "jsVersion": "11.3.244.11"
+    },
+    "viewport": {
+      "width": 412,
+      "height": 840,
+      "dpr": 2.625,
+      "userAgent": "Mozilla/5.0 (Linux; Android 14; sdk_gphone64_x86_64 Build/UE1A.230829.050; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/113.0.5672.136 Mobile Safari/537.36"
+    }
+  },
+  "fixtureSourceSha256": "790b5ac951bf2012ee8686f7d3cfc0715c6d21db02b6cb6b3bd1bfca935ea6e9",
+  "scenarioSessions": 1007,
+  "summary": {
+    "baseline": {
+      "samples": 6,
+      "tailMedianMs": 711.1499999999942,
+      "tailMaxMs": 809.8999999999651,
+      "tailMinMs": 640.1000000000349,
+      "maxLongtaskMs": 703,
+      "apkSha256": "20652b744919d66558203b3782f2a5e5e54d784f934b73ad0a3cde15e90f7faf",
+      "rawValuesMs": [
+        717.7999999999884,
+        809.8999999999651,
+        640.1000000000349,
+        758.2000000000116,
+        665.2999999999884,
+        704.5
+      ]
+    },
+    "current": {
+      "samples": 6,
+      "tailMedianMs": 772.6000000000058,
+      "tailMaxMs": 796.8999999999942,
+      "tailMinMs": 662.8000000000466,
+      "maxLongtaskMs": 693,
+      "apkSha256": "b11a767e1d7acbf34f1c3e818399cee0ad5dc38f69379f23b0d6faba8d0caae3",
+      "rawValuesMs": [
+        796.8999999999942,
+        672.5,
+        662.8000000000466,
+        792.2999999999884,
+        795.0999999999767,
+        752.9000000000233
+      ]
+    }
+  },
+  "currentDeltaPercent": 8.640933698940056,
+  "limitPercent": 10,
+  "sameRunLimitMs": 782.2649999999936,
+  "withinLimit": true,
+  "historical": {
+    "C0ColdMedianMs": 875.4,
+    "C1V4ColdMedianMs": 1020.7,
+    "deltaPercent": 16.598126570710537,
+    "historicalLimitMs": 962.94
+  },
+  "observations": [
+    {
+      "index": 1,
+      "label": "baseline",
+      "apkSha256": "20652b744919d66558203b3782f2a5e5e54d784f934b73ad0a3cde15e90f7faf",
+      "measurementVersion": 4,
+      "tailMs": 717.7999999999884,
+      "shellMs": 686,
+      "maxTaskMs": 609,
+      "fixtureSourceSha256": "790b5ac951bf2012ee8686f7d3cfc0715c6d21db02b6cb6b3bd1bfca935ea6e9",
+      "output": "tmp/c0/c1-r03-paired-01-baseline"
+    },
+    {
+      "index": 2,
+      "label": "current",
+      "apkSha256": "b11a767e1d7acbf34f1c3e818399cee0ad5dc38f69379f23b0d6faba8d0caae3",
+      "measurementVersion": 4,
+      "tailMs": 796.8999999999942,
+      "shellMs": 760.5,
+      "maxTaskMs": 693,
+      "fixtureSourceSha256": "790b5ac951bf2012ee8686f7d3cfc0715c6d21db02b6cb6b3bd1bfca935ea6e9",
+      "output": "tmp/c0/c1-r03-paired-02-current"
+    },
+    {
+      "index": 3,
+      "label": "current",
+      "apkSha256": "b11a767e1d7acbf34f1c3e818399cee0ad5dc38f69379f23b0d6faba8d0caae3",
+      "measurementVersion": 4,
+      "tailMs": 672.5,
+      "shellMs": 647.6999999999534,
+      "maxTaskMs": 544,
+      "fixtureSourceSha256": "790b5ac951bf2012ee8686f7d3cfc0715c6d21db02b6cb6b3bd1bfca935ea6e9",
+      "output": "tmp/c0/c1-r03-paired-03-current"
+    },
+    {
+      "index": 4,
+      "label": "baseline",
+      "apkSha256": "20652b744919d66558203b3782f2a5e5e54d784f934b73ad0a3cde15e90f7faf",
+      "measurementVersion": 4,
+      "tailMs": 809.8999999999651,
+      "shellMs": 782.1999999999534,
+      "maxTaskMs": 703,
+      "fixtureSourceSha256": "790b5ac951bf2012ee8686f7d3cfc0715c6d21db02b6cb6b3bd1bfca935ea6e9",
+      "output": "tmp/c0/c1-r03-paired-04-baseline"
+    },
+    {
+      "index": 5,
+      "label": "baseline",
+      "apkSha256": "20652b744919d66558203b3782f2a5e5e54d784f934b73ad0a3cde15e90f7faf",
+      "measurementVersion": 4,
+      "tailMs": 640.1000000000349,
+      "shellMs": 629.2000000000116,
+      "maxTaskMs": 540,
+      "fixtureSourceSha256": "790b5ac951bf2012ee8686f7d3cfc0715c6d21db02b6cb6b3bd1bfca935ea6e9",
+      "output": "tmp/c0/c1-r03-paired-05-baseline"
+    },
+    {
+      "index": 6,
+      "label": "current",
+      "apkSha256": "b11a767e1d7acbf34f1c3e818399cee0ad5dc38f69379f23b0d6faba8d0caae3",
+      "measurementVersion": 4,
+      "tailMs": 662.8000000000466,
+      "shellMs": 627.9000000000233,
+      "maxTaskMs": 575,
+      "fixtureSourceSha256": "790b5ac951bf2012ee8686f7d3cfc0715c6d21db02b6cb6b3bd1bfca935ea6e9",
+      "output": "tmp/c0/c1-r03-paired-06-current"
+    },
+    {
+      "index": 7,
+      "label": "current",
+      "apkSha256": "b11a767e1d7acbf34f1c3e818399cee0ad5dc38f69379f23b0d6faba8d0caae3",
+      "measurementVersion": 4,
+      "tailMs": 792.2999999999884,
+      "shellMs": 753.7999999999884,
+      "maxTaskMs": 681,
+      "fixtureSourceSha256": "790b5ac951bf2012ee8686f7d3cfc0715c6d21db02b6cb6b3bd1bfca935ea6e9",
+      "output": "tmp/c0/c1-r03-paired-07-current"
+    },
+    {
+      "index": 8,
+      "label": "baseline",
+      "apkSha256": "20652b744919d66558203b3782f2a5e5e54d784f934b73ad0a3cde15e90f7faf",
+      "measurementVersion": 4,
+      "tailMs": 758.2000000000116,
+      "shellMs": 727.5,
+      "maxTaskMs": 644,
+      "fixtureSourceSha256": "790b5ac951bf2012ee8686f7d3cfc0715c6d21db02b6cb6b3bd1bfca935ea6e9",
+      "output": "tmp/c0/c1-r03-paired-08-baseline"
+    },
+    {
+      "index": 9,
+      "label": "baseline",
+      "apkSha256": "20652b744919d66558203b3782f2a5e5e54d784f934b73ad0a3cde15e90f7faf",
+      "measurementVersion": 4,
+      "tailMs": 665.2999999999884,
+      "shellMs": 620,
+      "maxTaskMs": 518,
+      "fixtureSourceSha256": "790b5ac951bf2012ee8686f7d3cfc0715c6d21db02b6cb6b3bd1bfca935ea6e9",
+      "output": "tmp/c0/c1-r03-paired-09-baseline"
+    },
+    {
+      "index": 10,
+      "label": "current",
+      "apkSha256": "b11a767e1d7acbf34f1c3e818399cee0ad5dc38f69379f23b0d6faba8d0caae3",
+      "measurementVersion": 4,
+      "tailMs": 795.0999999999767,
+      "shellMs": 772,
+      "maxTaskMs": 689,
+      "fixtureSourceSha256": "790b5ac951bf2012ee8686f7d3cfc0715c6d21db02b6cb6b3bd1bfca935ea6e9",
+      "output": "tmp/c0/c1-r03-paired-10-current"
+    },
+    {
+      "index": 11,
+      "label": "current",
+      "apkSha256": "b11a767e1d7acbf34f1c3e818399cee0ad5dc38f69379f23b0d6faba8d0caae3",
+      "measurementVersion": 4,
+      "tailMs": 752.9000000000233,
+      "shellMs": 737.2000000000116,
+      "maxTaskMs": 666,
+      "fixtureSourceSha256": "790b5ac951bf2012ee8686f7d3cfc0715c6d21db02b6cb6b3bd1bfca935ea6e9",
+      "output": "tmp/c0/c1-r03-paired-11-current"
+    },
+    {
+      "index": 12,
+      "label": "baseline",
+      "apkSha256": "20652b744919d66558203b3782f2a5e5e54d784f934b73ad0a3cde15e90f7faf",
+      "measurementVersion": 4,
+      "tailMs": 704.5,
+      "shellMs": 662.9000000000233,
+      "maxTaskMs": 585,
+      "fixtureSourceSha256": "790b5ac951bf2012ee8686f7d3cfc0715c6d21db02b6cb6b3bd1bfca935ea6e9",
+      "output": "tmp/c0/c1-r03-paired-12-baseline"
+    }
+  ],
+  "limitations": [
+    "6 samples per APK, no switch P95 or statistical equivalence claim",
+    "Current APK includes C4 fixes; historical C1-v4 APK was not rebuilt or retested",
+    "Pure-text only; no new mixed, memory, real-device or TalkBack acceptance",
+    "First diagnostic startup disconnected from CDP before valid samples; retry trace succeeded"
+  ],
+  "evidence": {
+    "comparisonScript": "tmp/c1-r03/compare.mjs",
+    "runtimePatch": "tmp/c1-r03/runtime.patch",
+    "sourceHashes": "tmp/c1-r03/source-hashes.json",
+    "trace": "tmp/c0/c1-r03-text-trace-retry/render-trace.json",
+    "traceSummary": "tmp/c1-r03/text-trace-summary.json"
+  }
+}

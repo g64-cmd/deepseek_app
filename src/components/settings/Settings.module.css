@@ -86,17 +86,18 @@
 
 .row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
 
 .text {
   display: flex;
-  flex: 1 0 0;
+  flex: 1 1 12rem;
   flex-direction: column;
   gap: 4px;
   min-width: 0;
-  padding-right: 48px;
+  padding-right: 0;
 }
 
 .label {
@@ -127,7 +128,7 @@
   max-width: 100%;
 }
 
-.locationSelectors > button {
+.locationSelectors > select {
   flex-shrink: 1;
   min-width: 0;
   text-align: start;
@@ -159,6 +160,7 @@
 }
 
 .themeOption {
+  position: relative;
   display: inline-flex;
   flex: 1;
   flex-direction: column;
@@ -166,7 +168,8 @@
   justify-content: space-between;
   box-sizing: border-box;
   min-width: 128px;
-  height: 82px;
+  min-height: 82px;
+  gap: 8px;
   padding: 21px 32px;
   border: 1px solid var(--dsw-alias-border-l2);
   border-radius: 12px;
@@ -176,7 +179,7 @@
   font-size: 14px;
   line-height: 22px;
   text-align: center;
-  white-space: nowrap;
+  white-space: normal;
   cursor: pointer;
   user-select: none;
   outline: none;
@@ -187,7 +190,7 @@
     background-color: var(--dsw-specific-selector);
   }
 
-  &:focus-visible {
+  &:focus-within {
     box-shadow: 0 0 0 2px var(--dsw-alias-button-primary-fill);
   }
 }
@@ -304,19 +307,22 @@
 
   .navigation {
     flex-direction: row;
+    flex-wrap: wrap;
     width: auto;
     margin: 6px -4px;
     padding: 4px 0;
-    overflow-x: auto;
+    max-height: 40%;
+    overflow-y: auto;
   }
 
   .navItem {
-    flex: 1 0 auto;
+    flex: 1 1 28%;
     justify-content: center;
     width: auto;
-    min-width: 108px;
+    min-width: 0;
     margin: 0;
-    white-space: nowrap;
+    white-space: normal;
+    overflow-wrap: anywhere;
 
     &:first-child {
       margin-left: 4px;
@@ -334,6 +340,7 @@
   }
 
   .text {
+    flex-basis: 100%;
     padding-right: 8px;
   }
 

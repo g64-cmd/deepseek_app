@@ -30,6 +30,8 @@ before(async () => {
   globalThis.document = new EventTarget()
   document.visibilityState = 'hidden'
   globalThis.window = new EventTarget()
+  window.clearTimeout = clearTimeout
+  window.setTimeout = (callback, delay) => setTimeout(callback, delay).unref()
   globalThis.requestAnimationFrame = () => 1
   globalThis.cancelAnimationFrame = () => {}
   images = installImageFixture(document)
@@ -69,6 +71,8 @@ beforeEach(() => {
   })
   api.setApiKey('fixture-only')
   api.setModel('deepseek-flash')
+  api.setDocBillingAcked(false)
+  api.setDocParseMode('rich')
 })
 
 test('image upload keeps an in-limit original unchanged', async () => {
@@ -343,4 +347,375 @@ test('reply citations and search/open-page links expose only HTTP(S) without cha
   )
   assert.equal((view.answer.markdown.match(/\[citation:/g) ?? []).length, 2)
   assert.deepEqual(reply, before)
+})
+
+const doc = (id, extra = {}) => ({
+  id,
+  serverId: `file-api-${id}`,
+  name: `${id}.pdf`,
+  size: 3,
+  isImage: false,
+  mimeType: 'application/pdf',
+  purpose: 'text_recognition',
+  ...extra,
+})
+const mountDocuments = (id, files) => {
+  const { session } = mountHistory(id, null)
+  session.messages[0].files = files
+  api.runtime.sessions.set(id, structuredClone(session))
+  api.useChatStore.setState({ sessionCache: { [id]: session } })
+  return session
+}
+const lastReply = (id) => api.useChatStore.getState().sessionCache[id].messages.at(-1)
+const settled = async (id) => waitFor(() => !api.useChatStore.getState().streaming[id])
+const ask = async (id) => {
+  api.setDraftText(id, 'Next question')
+  assert.equal(api.sendMessage(id), true)
+  await settled(id)
+}
+const documentIds = (request) =>
+  request.messages.flatMap(({ content }) =>
+    Array.isArray(content)
+      ? content.filter(({ type }) => type === 'document').map(({ source }) => source.file_id)
+      : []
+  )
+
+test('document counting includes repeated references and only usable context rounds', () => {
+  const session = mountDocuments('count-docs', [doc('shared'), doc('shared')])
+  const [user, reply] = session.messages
+  const question = {
+    ...user,
+    id: 'new-question',
+    files: [doc('shared'), { ...doc('image'), isImage: true }],
+  }
+  const failed = { ...reply, status: 'error' }
+  const history = [user, reply, { ...user, id: 'failed-question' }, failed]
+  assert.equal(api.countRequestDocuments(history, question), 3)
+  assert.equal(api.countDocumentBlocks(api.toRequestMessages(history, question)), 3)
+})
+
+test('20 document references are sent, while 21 are blocked without consuming the draft', async () => {
+  mountDocuments(
+    'twenty',
+    Array.from({ length: 20 }, () => doc('shared'))
+  )
+  const { uploads, requests } = wireRequests()
+  await ask('twenty')
+  assert.equal(documentIds(requests[0]).length, 20)
+  mountDocuments(
+    'twenty-one',
+    Array.from({ length: 21 }, () => doc('shared'))
+  )
+  api.setDraftText('twenty-one', 'Preserve this draft')
+  assert.equal(api.sendMessage('twenty-one'), false)
+  assert.equal(api.getDraft('twenty-one').text, 'Preserve this draft')
+  assert.equal(api.regenerateReply('twenty-one'), 'docLimit')
+  assert.equal(api.editMessage('twenty-one', 'twenty-one-user', 'Changed'), 'docLimit')
+  const session = api.useChatStore.getState().sessionCache['twenty-one']
+  session.messages[1].stopReason = 'max_tokens'
+  assert.equal(api.continueReply('twenty-one', 'twenty-one-reply'), 'docLimit')
+  assert.equal(requests.length, 1)
+  assert.equal(uploads.length, 0)
+})
+
+test('21 documents needing reupload are blocked before any paid upload', async () => {
+  const files = Array.from({ length: 21 }, (_, i) => doc(`pending-${i}`, { serverId: null }))
+  mountDocuments('pending-limit', files)
+  files.forEach((file) => api.runtime.files.set(file.id, new Blob(['pdf'])))
+  const { uploads, requests } = wireRequests()
+  await ask('pending-limit')
+  assert.equal(lastReply('pending-limit').error.kind, 'docLimit')
+  assert.equal(uploads.length, 0)
+  assert.equal(requests.length, 0)
+})
+
+test('missing originals pause the request; explicit omission preserves stored attachments', async () => {
+  mountDocuments('missing-doc', [doc('gone', { serverId: null })])
+  const { uploads, requests } = wireRequests()
+  await ask('missing-doc')
+  const reply = lastReply('missing-doc')
+  assert.equal(reply.error.kind, 'contextMissing')
+  assert.deepEqual(reply.error.fileIds, ['gone'])
+  assert.equal(requests.length, 0)
+  api.retryUpload('missing-doc', reply.id, { omitMissing: true })
+  await settled('missing-doc')
+  assert.equal(requests.length, 1)
+  assert.equal(documentIds(requests[0]).length, 0)
+  assert.equal(uploads.length, 0)
+  assert.equal(
+    api.useChatStore.getState().sessionCache['missing-doc'].messages[0].files[0].id,
+    'gone'
+  )
+})
+
+test('failed history uploads never silently drop from a sent chat, and retry reuses successes', async () => {
+  mountDocuments('upload-failure', [
+    doc('ok', { serverId: null, name: 'ok.txt', purpose: 'user_data' }),
+    doc('bad', { serverId: null, name: 'bad.txt', purpose: 'user_data' }),
+  ])
+  for (const id of ['ok', 'bad']) api.runtime.files.set(id, new Blob([id]))
+  const uploads = [],
+    requests = []
+  let fail = true
+  globalThis.fetch = async (url, options) => {
+    if (String(url).endsWith('/files')) {
+      const name = options.body.get('file').name
+      uploads.push(name)
+      if (name === 'bad.txt' && fail) throw new TypeError('offline fixture')
+      return Response.json({ id: `file-api-${name}` })
+    }
+    requests.push(JSON.parse(options.body))
+    return new Response('event: message_stop\ndata: {"type":"message_stop"}\n\n')
+  }
+  await ask('upload-failure')
+  assert.equal(lastReply('upload-failure').error.kind, 'contextMissing')
+  assert.equal(requests.length, 0)
+  fail = false
+  api.retryUpload('upload-failure', lastReply('upload-failure').id)
+  await settled('upload-failure')
+  assert.equal(requests.length, 1)
+  assert.equal(uploads.filter((name) => name === 'ok.txt').length, 1)
+  assert.equal(documentIds(requests[0]).length, 2)
+})
+
+test('restored paid documents require per-request consent, keep their purpose, and reuse successful IDs', async () => {
+  mountDocuments('restored-doc', [doc('restored', { serverId: null })])
+  api.runtime.files.set('restored', new Blob(['pdf']))
+  api.setDocBillingAcked(true)
+  const forms = [],
+    requests = []
+  globalThis.fetch = async (url, options) => {
+    if (String(url).endsWith('/files')) {
+      forms.push(options.body)
+      return Response.json({ id: 'file-api-restored-new' })
+    }
+    requests.push(JSON.parse(options.body))
+    return new Response('event: message_stop\ndata: {"type":"message_stop"}\n\n')
+  }
+  await ask('restored-doc')
+  const reply = lastReply('restored-doc')
+  assert.equal(reply.error.kind, 'reparse')
+  assert.equal(forms.length, 0)
+  api.retryUpload('restored-doc', reply.id)
+  assert.equal(forms.length, 0, 'generic retry does not authorize paid parsing')
+  api.setDocParseMode('rich')
+  api.retryUpload('restored-doc', reply.id, { reparse: true })
+  await settled('restored-doc')
+  assert.equal(forms.length, 1)
+  assert.equal(forms[0].get('purpose'), 'text_recognition')
+  assert.deepEqual([...forms[0].keys()], ['purpose', 'file'])
+  assert.deepEqual(documentIds(requests[0]), ['file-api-restored-new'])
+  await ask('restored-doc')
+  assert.equal(forms.length, 1)
+})
+
+test('expired paid IDs do not automatically reparse; only the named document is reset on consent', async () => {
+  mountDocuments('expired-doc', [doc('expired'), doc('keep'), doc('expired')])
+  api.runtime.files.set('expired', new Blob(['pdf']))
+  const forms = [],
+    requests = []
+  globalThis.fetch = async (url, options) => {
+    if (String(url).endsWith('/files')) {
+      forms.push(options.body)
+      return Response.json({ id: 'file-api-renewed' })
+    }
+    requests.push(JSON.parse(options.body))
+    if (requests.length === 1)
+      return Response.json(
+        { error: { message: 'file data not found for file_id file-api-expired' } },
+        { status: 400 }
+      )
+    return new Response('event: message_stop\ndata: {"type":"message_stop"}\n\n')
+  }
+  await ask('expired-doc')
+  assert.equal(lastReply('expired-doc').error.kind, 'reparse')
+  assert.deepEqual(lastReply('expired-doc').error.fileIds, ['expired'])
+  assert.equal(requests.length, 1)
+  assert.equal(forms.length, 0)
+  api.retryUpload('expired-doc', lastReply('expired-doc').id, { reparse: true })
+  await settled('expired-doc')
+  assert.equal(forms.length, 1)
+  assert.deepEqual(documentIds(requests[1]), [
+    'file-api-renewed',
+    'file-api-keep',
+    'file-api-renewed',
+  ])
+})
+
+test('omission survives a subsequent parse confirmation and does not loop back to missing files', async () => {
+  mountDocuments('combined', [doc('missing', { serverId: null }), doc('paid', { serverId: null })])
+  api.runtime.files.set('paid', new Blob(['pdf']))
+  const { uploads, requests } = wireRequests()
+  await ask('combined')
+  assert.equal(lastReply('combined').error.kind, 'contextMissing')
+  api.retryUpload('combined', lastReply('combined').id, { omitMissing: true })
+  await settled('combined')
+  assert.equal(lastReply('combined').error.kind, 'reparse')
+  api.retryUpload('combined', lastReply('combined').id, { reparse: true })
+  await settled('combined')
+  assert.equal(uploads.length, 1)
+  assert.equal(requests.length, 1)
+  assert.equal(documentIds(requests[0]).length, 1)
+})
+
+test('stopping an authorized parse cannot send chat when the late upload finishes', async () => {
+  mountDocuments('stop-parse', [doc('slow', { serverId: null })])
+  api.runtime.files.set('slow', new Blob(['pdf']))
+  let finishUpload
+  const requests = []
+  globalThis.fetch = async (url, options) => {
+    if (String(url).endsWith('/files'))
+      return new Promise((resolve) => {
+        finishUpload = resolve
+      })
+    requests.push(JSON.parse(options.body))
+    return new Response('event: message_stop\ndata: {"type":"message_stop"}\n\n')
+  }
+  await ask('stop-parse')
+  api.retryUpload('stop-parse', lastReply('stop-parse').id, { reparse: true })
+  await waitFor(() => !!finishUpload)
+  api.stopReply('stop-parse')
+  await settled('stop-parse')
+  finishUpload(Response.json({ id: 'file-api-late' }))
+  await tick()
+  await tick()
+  assert.equal(requests.length, 0)
+  assert.equal(lastReply('stop-parse').status, 'stopped')
+  assert.equal(
+    api.useChatStore.getState().sessionCache['stop-parse'].messages[0].files[0].serverId,
+    'file-api-late'
+  )
+})
+
+test('billing consent precedes draft upload and parse mode is fixed when the file is added', async () => {
+  const file = new File(['pdf'], 'first.pdf', { type: 'application/pdf' })
+  const forms = []
+  globalThis.fetch = async (_url, options) => {
+    forms.push(options.body)
+    return Response.json({ id: 'file-api-new' })
+  }
+  assert.equal(api.addDraftFiles(null, [file], 'fixture-only').key, 'docBillingDescription')
+  assert.equal(api.getDraft(null).attachments.length, 0)
+  assert.equal(forms.length, 0)
+  api.setDocBillingAcked(true)
+  api.setDocParseMode('text')
+  assert.equal(api.addDraftFiles(null, [file], 'fixture-only'), null)
+  api.setDocParseMode('rich')
+  await waitFor(() => forms.length === 1)
+  assert.equal(forms[0].get('purpose'), 'text_recognition')
+  assert.equal(api.getDraft(null).attachments[0].purpose, 'text_recognition')
+})
+
+test('upload limits distinguish 100 MiB documents, 64 MiB images and 32 MiB user data', () => {
+  const sized = (name, size, type) => ({ name, size: size * 1024 * 1024, type })
+  assert.equal(api.validateFiles([sized('a.pdf', 100, 'application/pdf')], 0), null)
+  assert.equal(api.validateFiles([sized('a.pdf', 100.01, 'application/pdf')], 0).params.size, 100)
+  assert.equal(api.validateFiles([sized('a.png', 64, 'image/png')], 0), null)
+  assert.equal(api.validateFiles([sized('a.png', 64.01, 'image/png')], 0).params.size, 64)
+  assert.equal(api.validateFiles([sized('a.txt', 32, 'text/plain')], 0), null)
+  assert.equal(api.validateFiles([sized('a.txt', 32.01, 'text/plain')], 0).params.size, 32)
+})
+
+test('unselected branches are excluded from the document guard and outgoing request', async () => {
+  const session = mountDocuments('doc-branch', [doc('selected')])
+  session.rootMessageId = session.messages[0].id
+  session.messages[0].parentId = null
+  session.messages[0].selectedChildId = session.messages[1].id
+  session.messages[1].parentId = session.messages[0].id
+  session.messages.push(
+    {
+      ...session.messages[0],
+      id: 'other-root',
+      selectedChildId: 'other-reply',
+      files: Array.from({ length: 21 }, () => doc('other')),
+    },
+    { ...session.messages[1], id: 'other-reply', parentId: 'other-root' }
+  )
+  api.useChatStore.setState({ sessionCache: { 'doc-branch': session } })
+  const { requests } = wireRequests()
+  assert.equal(api.countContextDocuments('doc-branch'), 1)
+  await ask('doc-branch')
+  assert.deepEqual(documentIds(requests[0]), ['file-api-selected'])
+})
+
+test('legacy document reuploads retain rich parsing and a text-only Pro retry keeps images excluded', async () => {
+  mountDocuments('legacy-parse', [
+    doc('old', { serverId: null, purpose: undefined }),
+    { ...doc('picture'), isImage: true, name: 'picture.png', imageSizeChecked: true },
+  ])
+  api.runtime.files.set('old', new Blob(['pdf']))
+  api.setDocParseMode('text')
+  api.setModel('deepseek-v4-pro')
+  const forms = [],
+    requests = []
+  globalThis.fetch = async (url, options) => {
+    if (String(url).endsWith('/files')) {
+      forms.push(options.body)
+      return Response.json({ id: 'file-api-legacy-new' })
+    }
+    requests.push(JSON.parse(options.body))
+    return new Response('event: message_stop\ndata: {"type":"message_stop"}\n\n')
+  }
+  api.setDraftText('legacy-parse', 'Text only')
+  api.sendMessage('legacy-parse', { dropHistoryImages: true })
+  await settled('legacy-parse')
+  assert.equal(lastReply('legacy-parse').error.kind, 'reparse')
+  api.retryUpload('legacy-parse', lastReply('legacy-parse').id, { reparse: true })
+  await settled('legacy-parse')
+  assert.equal(forms[0].get('purpose'), 'rich_layout_recognition')
+  assert.deepEqual(imageIds(requests[0]), [])
+})
+
+test('full backups round-trip document purposes and mode without transferring billing consent', async () => {
+  const files = [
+    doc('text'),
+    doc('rich', { purpose: 'rich_layout_recognition' }),
+    doc('plain', { name: 'plain.txt', purpose: 'user_data' }),
+    doc('legacy', { purpose: undefined }),
+  ]
+  mountDocuments('purpose-backup', files)
+  files.forEach((file) => api.runtime.files.set(file.id, new Blob([file.name])))
+  api.setDocParseMode('text')
+  api.setDocBillingAcked(true)
+  const { blob } = await api.exportFullBackup()
+  const entries = new Map()
+  for await (const entry of api.readArchive(new File([blob], 'purposes.zip')))
+    entries.set(entry.path, await api.readEntry(entry))
+  const settings = JSON.parse(await entries.get('app_settings.json').text())
+  assert.equal(settings.settings.doc_parse_mode, 'text')
+  assert.ok(!JSON.stringify(settings).includes('billing'))
+  api.setDocParseMode('rich')
+  api.setDocBillingAcked(false)
+  await api.importHistory(new File([blob], 'purposes.zip'))
+  const restored = api.runtime.sessions.get('purpose-backup').messages[0].files
+  assert.deepEqual(
+    restored.map((file) => file.purpose),
+    ['text_recognition', 'rich_layout_recognition', 'user_data', undefined]
+  )
+  assert.ok(restored.every((file) => file.serverId === null))
+  assert.equal(api.useSettings.getState().docParseMode, 'text')
+  assert.equal(api.useSettings.getState().docBillingAcked, false)
+  // A pre-C4 archive has neither extension. It still imports and leaves the target mode alone.
+  delete settings.settings.doc_parse_mode
+  entries.set('app_settings.json', new Blob([JSON.stringify(settings)]))
+  for (const [name, content] of entries) {
+    if (!name.startsWith('chat_sessions/') || !name.endsWith('.json')) continue
+    const session = JSON.parse(await content.text())
+    for (const message of session.messages)
+      for (const fragment of message.fragments)
+        if (fragment.type === 'FILE')
+          fragment.files.forEach((file) => {
+            delete file.purpose
+          })
+    entries.set(name, new Blob([JSON.stringify(session)]))
+  }
+  api.setDocParseMode('rich')
+  const old = await api.writeArchive([...entries].map(([name, blob]) => ({ name, blob })))
+  await api.importHistory(new File([old], 'pre-c4.zip'))
+  assert.equal(api.useSettings.getState().docParseMode, 'rich')
+  assert.ok(
+    api.runtime.sessions
+      .get('purpose-backup')
+      .messages[0].files.every((file) => file.purpose === undefined)
+  )
 })

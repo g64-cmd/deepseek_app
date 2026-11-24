@@ -1,6 +1,9 @@
 /* 附件图片全屏查看器：黑底沉浸视图 */
 
 .overlay {
+  color-scheme: dark;
+  --dsw-alias-label-primary: #fff;
+  --dsw-alias-border-l2: #888;
   position: fixed;
   inset: 0;
   z-index: 1000;
@@ -10,6 +13,9 @@
 }
 
 .header {
+  box-sizing: border-box;
+  max-height: 30%;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -20,12 +26,13 @@
 .name {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
+  max-height: min(4.714em, calc(30dvh - 20px));
+  overflow-y: auto;
   font-size: 14px;
   line-height: 22px;
   color: var(--dsw-static-neutral-bluish-00, #fff);
   text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .stage {
@@ -47,10 +54,23 @@
 }
 
 .footer {
+  box-sizing: border-box;
   display: flex;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  gap: 8px;
+  max-height: 45%;
+  overflow-y: auto;
   align-items: center;
   justify-content: center;
-  padding: 14px 0 22px;
+  padding: 14px 12px max(22px, env(safe-area-inset-bottom));
+}
+
+.footer button {
+  height: auto;
+  min-height: 44px;
+  padding-block: 8px;
+  white-space: normal;
 }
 
 .loading {

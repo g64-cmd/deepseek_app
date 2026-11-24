@@ -1,3 +1,4 @@
+const { attachRef } = require('../dom.cjs')
 let slots = [],
   cursor = 0,
   effects = []
@@ -49,7 +50,7 @@ exports.useCallback = (callback) => callback
 exports.useSyncExternalStore = (_subscribe, snapshot) => snapshot()
 exports.memo = (component) => component
 exports.Fragment = 'fragment'
-exports.jsx = exports.jsxs = (type, props) => ({ type, props: props ?? {} })
+exports.jsx = exports.jsxs = attachRef
 exports.jsxDEV = exports.jsx
 exports.createPortal = (tree) => tree
 exports.useTranslate = () => (key) => key

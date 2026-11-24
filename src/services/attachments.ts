@@ -14,6 +14,7 @@ export const ACCEPTED_EXTS = ACCEPT_FILE_EXTS
 export const ACCEPT = ACCEPTED_EXTS.map((ext) => `.${ext}`).join(',')
 /** 单文件大小上限与 Files API 一致 */
 export const MAX_SIZE_MB = 64
+export const MAX_DOCUMENT_SIZE_MB = 100
 /** 按 user_data 上传的文件（纯文本、代码、表格、电子书）原文件上限更小 */
 export const MAX_USER_DATA_SIZE_MB = 32
 export const MAX_COUNT = 50
@@ -28,10 +29,13 @@ export const getFileExt = (name: string) => {
 
 export const isAcceptedExt = (name: string) => ACCEPTED_EXTS.includes(getFileExt(name))
 
-/** 需要服务端做版面解析的文档；其余非图片文件（纯文本、代码、表格、电子书）无需解析 */
+/** 需要服务端做版面解析的文档（解析成功按页计费）；其余非图片文件（纯文本、代码、表格、电子书）无需解析 */
 const LAYOUT_RECOGNITION_EXTS = new Set(['pdf', 'doc', 'docx', 'ppt', 'pptx'])
 
-/** 上传时的 purpose：图片不传，PDF 与 Word、PPT 做版面解析，其余按 user_data 上传 */
+/** 是否为按页计费的版面解析文档；发送前的计费说明只针对这类文件 */
+export const isLayoutDocument = (name: string) => LAYOUT_RECOGNITION_EXTS.has(getFileExt(name))
+
+/** 旧附件没有 purpose 时的兼容缺省：图片不传，版面文档图文混排，其余 user_data。 */
 export const getUploadPurpose = (name: string, isImage: boolean): FilePurpose | null => {
   if (isImage) {
     return null
@@ -39,11 +43,17 @@ export const getUploadPurpose = (name: string, isImage: boolean): FilePurpose | 
   return LAYOUT_RECOGNITION_EXTS.has(getFileExt(name)) ? 'rich_layout_recognition' : 'user_data'
 }
 
+/** 版面解析 purpose：重新上传意味着再次按页计费 */
+export const isParseBilledPurpose = (purpose: FilePurpose | null): boolean =>
+  purpose === 'text_recognition' || purpose === 'rich_layout_recognition'
+
 /** 文件允许的最大体积（MB），按上传时的 purpose 区分 */
 const getMaxSizeMB = (file: File) =>
   getUploadPurpose(file.name, isImage(resolveMimeType(file))) === 'user_data'
     ? MAX_USER_DATA_SIZE_MB
-    : MAX_SIZE_MB
+    : isImage(resolveMimeType(file))
+      ? MAX_SIZE_MB
+      : MAX_DOCUMENT_SIZE_MB
 
 /** 添加前校验：格式 → 大小 → 数量，任一不满足即整批不添加 */
 export const validateFiles = (files: File[], currentCount: number): TranslationMessage | null => {
@@ -86,7 +96,7 @@ export const onUploadNotice = (listener: NoticeListener) => {
 }
 
 /** 删除已上传文件的接口文档 */
-const DELETE_FILE_DOCS_URL = 'https://api-docs.deepseek.com/api/delete-file'
+const DELETE_FILE_DOCS_URL = 'https://api-docs.deepseek.com/zh-cn/guides/files_api/#删除文件'
 
 /** 文件数或存储空间达到上限：附件上只放得下「上传失败」，原因另用 toast 说明并引导删除旧文件 */
 export const describeUploadQuota = (error: unknown): LinkedMessage | undefined => {
@@ -124,23 +134,27 @@ const enqueueUpload = (
   apiKey: string,
   file: Blob,
   name: string,
-  isImage: boolean,
-  signal: AbortSignal
+  purpose: FilePurpose | null,
+  signal: AbortSignal,
+  onStart: () => void
 ) =>
   new Promise<string>((resolve, reject) => {
+    const onAbort = () => reject(signal.reason)
+    signal.addEventListener('abort', onAbort, { once: true })
     queue.push(async () => {
+      signal.removeEventListener('abort', onAbort)
       if (signal.aborted) {
         reject(signal.reason)
         return
       }
+      onStart()
       try {
         const body = file instanceof File ? file : new File([file], name, { type: file.type })
-        resolve((await uploadFile(apiKey, body, getUploadPurpose(name, isImage), signal)).id)
+        resolve((await uploadFile(apiKey, body, purpose, signal)).id)
       } catch (error) {
         reject(error)
       }
     })
-    next()
   })
 
 /**
@@ -164,29 +178,76 @@ const setTask = (id: string, task: UploadTask | null) =>
       : Object.fromEntries(Object.entries(state.tasks).filter(([key]) => key !== id)),
   }))
 
-const pending = new Map<string, { promise: Promise<string>; controller: AbortController }>()
+type PendingUpload = {
+  promise: Promise<string>
+  controller: AbortController
+  state: { started: boolean; consumers: Set<symbol> }
+}
+const pending = new Map<string, PendingUpload>()
 
-/** 开始（或复用进行中的）上传，返回服务端 file_id；失败时任务记为 error 并抛出原错误 */
+/** 一个使用方停止只释放自己的使用权；已开始的上传继续保存结果。 */
+const retainUpload = (task: PendingUpload, signal?: AbortSignal): Promise<string> => {
+  signal?.throwIfAborted()
+  const consumer = Symbol()
+  task.state.consumers.add(consumer)
+  const release = () => {
+    task.state.consumers.delete(consumer)
+    if (!task.state.started && task.state.consumers.size === 0) {
+      task.controller.abort(new DOMException('No active upload consumers', 'AbortError'))
+    }
+  }
+  signal?.addEventListener('abort', release, { once: true })
+  return task.promise.finally(() => {
+    signal?.removeEventListener('abort', release)
+    release()
+  })
+}
+
+export const hasPendingUpload = (id: string): boolean => {
+  const task = pending.get(id)
+  return !!task && !task.controller.signal.aborted
+}
+
+/** 只复用已获授权的现有任务；任务已取消或不存在时不创建新的上传。 */
+export const reuseUpload = (id: string, signal: AbortSignal): Promise<string> | undefined => {
+  const task = pending.get(id)
+  return task && !task.controller.signal.aborted ? retainUpload(task, signal) : undefined
+}
+
+/**
+ * 开始或复用上传；signal 释放本次使用权，无使用方的排队任务不再启动。
+ * 已开始的上传继续返回结果；草稿未传 signal 时持有使用权直到完成或显式 cancelUpload。
+ */
 export const uploadAttachment = (
   apiKey: string,
   id: string,
   blob: Blob,
   name: string,
-  isImage: boolean
+  purpose: FilePurpose | null,
+  signal?: AbortSignal
 ): Promise<string> => {
+  signal?.throwIfAborted()
   const current = pending.get(id)
-  if (current) {
-    return current.promise
+  if (current && !current.controller.signal.aborted) {
+    return retainUpload(current, signal)
   }
   const controller = new AbortController()
-  setTask(id, { status: 'uploading' })
-  const promise = enqueueUpload(apiKey, blob, name, isImage, controller.signal)
+  const state = { started: false, consumers: new Set<symbol>() }
+  const isCurrent = () => pending.get(id)?.controller === controller
+  // 先注册任务和使用方再调度，队列启动时才能正确判定它是否仍被需要。
+  const promise = enqueueUpload(apiKey, blob, name, purpose, controller.signal, () => {
+    state.started = true
+  })
     .then((serverId) => {
-      setTask(id, { status: 'done', serverId })
+      if (isCurrent()) {
+        setTask(id, { status: 'done', serverId })
+      }
       return serverId
     })
     .catch((error: unknown) => {
-      if (controller.signal.aborted) {
+      if (!isCurrent()) {
+        throw error
+      } else if (controller.signal.aborted) {
         setTask(id, null)
       } else {
         setTask(id, {
@@ -203,13 +264,23 @@ export const uploadAttachment = (
       }
       throw error
     })
-    .finally(() => pending.delete(id))
-  pending.set(id, { promise, controller })
-  return promise
+    .finally(() => {
+      // 旧任务取消后可能已创建同 ID 的新任务，旧回调不能清掉新任务。
+      if (isCurrent()) {
+        pending.delete(id)
+      }
+    })
+  const task = { promise, controller, state }
+  pending.set(id, task)
+  const result = retainUpload(task, signal)
+  setTask(id, { status: 'uploading' })
+  next()
+  return result
 }
 
 export const cancelUpload = (id: string) => {
   pending.get(id)?.controller.abort()
+  pending.delete(id)
   setTask(id, null)
 }
 

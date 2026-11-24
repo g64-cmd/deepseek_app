@@ -13,7 +13,14 @@ export {
   useDrafts,
 } from '../../../src/services/chat/drafts.js'
 export { useUploads } from '../../../src/services/attachments.js'
-export { setModel, setApiKey, setLocation, useSettings } from '../../../src/services/settings.js'
+export {
+  setModel,
+  setApiKey,
+  setLocation,
+  setDocParseMode,
+  setDocBillingAcked,
+  useSettings,
+} from '../../../src/services/settings.js'
 export { exportArchive } from '../../../src/services/chat/history/exportArchive.js'
 export { exportFullBackup, importHistory } from '../../../src/services/chat/backup.js'
 export { readArchive, readEntry } from '../../../src/services/chat/history/zipReader.js'

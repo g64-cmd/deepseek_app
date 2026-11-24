@@ -33,6 +33,7 @@ const toFile = (file: FileEntry): FileAttachment => ({
   isImage: file.is_image,
   // 图片身份来自归档；v3 图片 MIME 随后从原件字节探测，v4 直接还原元数据。
   mimeType: file.mime_type ?? '',
+  ...(file.purpose !== undefined ? { purpose: file.purpose } : {}),
 })
 
 const toUser = (message: ChatMessage): UserMessage => ({

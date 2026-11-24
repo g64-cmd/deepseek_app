@@ -26,7 +26,7 @@ const packageMocks = new Set([
   'react-dom',
 ])
 const previousGlobals = Object.fromEntries(
-  ['document', 'Node', 'Element'].map((key) => [
+  ['document', 'Node', 'Element', 'HTMLElement'].map((key) => [
     key,
     Object.getOwnPropertyDescriptor(globalThis, key),
   ])
@@ -36,7 +36,8 @@ let api
 before(async () => {
   const replacements = new Map([...moduleMocks, ...packageMocks].map((name) => [name, runtimePath]))
   api = await compile('./tests/helpers/entries/platform.ts', 'platform', replacements)
-  for (const key of ['document', 'Node', 'Element']) globalThis[key] = api.testRuntime[key]
+  for (const key of ['document', 'Node', 'Element', 'HTMLElement'])
+    globalThis[key] = api.testRuntime[key]
 })
 
 beforeEach(() => api.testRuntime.reset())
@@ -54,12 +55,14 @@ test('Android Back closes the top confirmation and preserves the underlying sett
   const mountSettingsAndConfirmation = () => {
     runtime.state.settings.open = true
     api.Modal({ title: 'Settings', onClose: runtime.closeSettings })
+    runtime.flushLayouts()
     api.Modal({
       title: 'Confirm deletion',
       onClose: () => {
         confirmationsClosed += 1
       },
     })
+    runtime.flushLayouts()
   }
 
   // Control: the existing production Modal stack closes only the top dialog.

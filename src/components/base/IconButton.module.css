@@ -54,3 +54,10 @@
 .primary {
   color: var(--dsw-alias-label-primary);
 }
+
+@media (pointer: coarse) {
+  .button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}

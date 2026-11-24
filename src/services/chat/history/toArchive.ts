@@ -23,7 +23,11 @@ const isoOrNull = (value: string | null) => {
   return Number.isFinite(ms) ? iso(ms) : null
 }
 
-const userFragments = (message: UserMessage, exportImage: ExportImage, extended: boolean): Fragment[] => {
+const userFragments = (
+  message: UserMessage,
+  exportImage: ExportImage,
+  extended: boolean
+): Fragment[] => {
   const files = message.files.map((file): FileEntry => {
     const isImage = file.isImage
     return {
@@ -36,7 +40,12 @@ const userFragments = (message: UserMessage, exportImage: ExportImage, extended:
       is_image: isImage,
       width: null,
       height: null,
-      ...(extended ? { mime_type: file.mimeType } : {}),
+      ...(extended
+        ? {
+            mime_type: file.mimeType,
+            ...(file.purpose !== undefined ? { purpose: file.purpose } : {}),
+          }
+        : {}),
     }
   })
   return [

@@ -62,6 +62,8 @@ export const UserMessage = memo(function UserMessage({
     const result = editMessage(sessionId, message.id, draft.trim())
     if (result === 'modelNoVision') {
       showToast({ key: 'modelNoVisionBlockToast' })
+    } else if (result === 'docLimit') {
+      showToast({ key: 'docLimitBlocked', type: 'error' })
     } else if (result) {
       stopReadAloud()
       setEditing(false)
@@ -73,6 +75,8 @@ export const UserMessage = memo(function UserMessage({
       className={clsx(styles.container, isFirst && styles.isFirst)}
       data-message-id={message.id}
       data-message-role="user"
+      role="group"
+      aria-label={t('userMessageLabel')}
       data-image-count={message.files.filter((file) => isImage(getFileViewType(file.name))).length}
     >
       {message.files.length > 0 ? (

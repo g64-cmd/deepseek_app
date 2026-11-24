@@ -4,7 +4,7 @@ import { memo } from 'react'
 import { IconRefreshOutline16, IconWarningOutline16 } from '../base/icons.js'
 import { describeReply } from '../../services/chat/describe.js'
 import { canContinueReply } from '../../services/chat/reply.js'
-import { continueReply, regenerateReply } from '../../services/chat/store.js'
+import { continueReply, regenerateReply, retryUpload } from '../../services/chat/store.js'
 import { stopReadAloud } from '../../services/speech/readAloud.js'
 import type { AssistantMessage as AssistantMessageType } from '../../services/chat/types.js'
 import { openSettings } from '../settings/settingsDialogState.js'
@@ -59,7 +59,7 @@ export const AssistantMessage = memo(function AssistantMessage({
   const waiting = streaming && view.steps.length === 0 && !view.answer && !message.thinking
   const summaryEntry = `${message.id}-summary`
   return (
-    <div className={styles.message} data-message-id={message.id} data-message-role="assistant">
+    <div className={styles.message} role="group" aria-label={t('assistantMessageLabel')} data-message-id={message.id} data-message-role="assistant">
       {refused ? null : (
         <ReplyArea
           message={message}
@@ -123,12 +123,43 @@ export const AssistantMessage = memo(function AssistantMessage({
                 </a>
               </>
             ) : null}
+            {notice.action === 'reparse' ? (
+              <button
+                type="button"
+                className={styles.noticeAction}
+                disabled={busy}
+                onClick={() => retryUpload(sessionId, message.id, { reparse: true })}
+              >
+                {t('docReparseConfirm')}
+              </button>
+            ) : null}
+            {notice.action === 'contextMissing' ? (
+              <>
+                <button
+                  type="button"
+                  className={styles.noticeAction}
+                  disabled={busy}
+                  onClick={() => retryUpload(sessionId, message.id)}
+                >
+                  {t('contextRetry')}
+                </button>
+                <button
+                  type="button"
+                  className={styles.noticeAction}
+                  disabled={busy}
+                  onClick={() => retryUpload(sessionId, message.id, { omitMissing: true })}
+                >
+                  {t('contextOmit')}
+                </button>
+              </>
+            ) : null}
           </span>
         </div>
       ) : null}
       {!streaming && !refused && view.searchResults.length > 0 ? (
-        <div
+        <button type="button"
           className={clsx(styles.summary, panelEntry === summaryEntry && styles.summaryActive)}
+          aria-expanded={panelEntry === summaryEntry}
           onClick={() => toggleSearchPanel(summaryEntry, view.searchResults)}
         >
           <SiteThumbnails sources={view.searchResults} />
@@ -138,7 +169,7 @@ export const AssistantMessage = memo(function AssistantMessage({
               { count: view.searchResults.length }
             )}
           </span>
-        </div>
+        </button>
       ) : null}
       {streaming ? null : (
         <div className={styles.bottom}>
@@ -163,8 +194,11 @@ export const AssistantMessage = memo(function AssistantMessage({
               disabled={busy || refused}
               onClick={() => {
                 stopReadAloud()
-                if (regenerateReply(sessionId, message.id) === 'modelNoVision') {
+                const blocked = regenerateReply(sessionId, message.id)
+                if (blocked === 'modelNoVision') {
                   showToast({ key: 'modelNoVisionBlockToast' })
+                } else if (blocked === 'docLimit') {
+                  showToast({ key: 'docLimitBlocked', type: 'error' })
                 }
               }}
             />
@@ -177,8 +211,11 @@ export const AssistantMessage = memo(function AssistantMessage({
               disabled={busy}
               onClick={() => {
                 stopReadAloud()
-                if (continueReply(sessionId, message.id) === 'modelNoVision') {
+                const blocked = continueReply(sessionId, message.id)
+                if (blocked === 'modelNoVision') {
                   showToast({ key: 'modelNoVisionBlockToast' })
+                } else if (blocked === 'docLimit') {
+                  showToast({ key: 'docLimitBlocked', type: 'error' })
                 }
               }}
             >

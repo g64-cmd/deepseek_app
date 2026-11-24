@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { memo, useState } from 'react'
+import { memo, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslate } from '../../i18n/index.js'
 import { IconEditOutline16, IconEllipsisOutline16, IconTrashOutline16 } from '../base/icons.js'
 import { renameSession, selectSession } from '../../services/chat/store.js'
@@ -21,6 +21,14 @@ export const SessionItem = memo(function SessionItem({
 }) {
   const t = useTranslate()
   const [editing, setEditing] = useState(false)
+  const titleRef = useRef<HTMLButtonElement>(null)
+  const wasEditing = useRef(false)
+  useLayoutEffect(() => {
+    if (wasEditing.current && !editing) {
+      titleRef.current?.focus()
+    }
+    wasEditing.current = editing
+  }, [editing])
   const displayTitle = session.title || t('untitledChat')
 
   if (editing) {
@@ -39,12 +47,14 @@ export const SessionItem = memo(function SessionItem({
         className={styles.renameInput}
         defaultValue={displayTitle}
         autoFocus
+        aria-label={t('sessionItemMenuRenameOption')}
         onFocus={(event) => event.target.select()}
         onBlur={(event) => finish(event.target.value)}
         onKeyDown={(event) => {
           if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
             finish(event.currentTarget.value)
           } else if (event.key === 'Escape') {
+            event.stopPropagation()
             setEditing(false)
           }
         }}
@@ -53,16 +63,21 @@ export const SessionItem = memo(function SessionItem({
   }
 
   return (
-    <div
-      data-session-item={session.id}
-      className={clsx(styles.item, active && styles.active)}
-      onClick={() => {
-        selectSession(session.id)
-        closeMobileSider()
-      }}
-    >
-      <div className={styles.title}>{displayTitle}</div>
-      <div className={styles.action} onClick={(event) => event.stopPropagation()}>
+    <div data-session-row={session.id} className={clsx(styles.item, active && styles.active)}>
+      <button
+        data-session-item={session.id}
+        ref={titleRef}
+        type="button"
+        className={styles.title}
+        aria-current={active ? 'page' : undefined}
+        onClick={() => {
+          selectSession(session.id)
+          closeMobileSider()
+        }}
+      >
+        {displayTitle}
+      </button>
+      <div className={styles.action}>
         <Menu
           options={[
             {
@@ -80,8 +95,14 @@ export const SessionItem = memo(function SessionItem({
             },
           ]}
         >
-          {({ toggle }) => (
-            <IconButton icon={<IconEllipsisOutline16 />} aria-label={t('more')} onClick={toggle} />
+          {({ open, toggle }) => (
+            <IconButton
+              icon={<IconEllipsisOutline16 />}
+              aria-label={t('sessionMore', { title: displayTitle })}
+              aria-haspopup="menu"
+              aria-expanded={open}
+              onClick={toggle}
+            />
           )}
         </Menu>
       </div>

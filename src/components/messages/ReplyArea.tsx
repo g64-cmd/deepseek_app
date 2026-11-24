@@ -1,6 +1,6 @@
 import { useTranslate } from '../../i18n/index.js'
 import clsx from 'clsx'
-import { memo, useEffect, useState, type ReactNode } from 'react'
+import { memo, useEffect, useId, useState, type ReactNode } from 'react'
 import {
   IconBrowseOutline16,
   IconBrowseWarningOutline16,
@@ -66,6 +66,7 @@ export const ReplyArea = memo(function ReplyArea({
 }) {
   useTranslate()
   const [open, setOpen] = useState(true)
+  const stepsId = useId()
   const titleActive = streaming && !hasResponse
   useTicker(titleActive, 1000)
   if (view.steps.length === 0 && !(message.thinking && streaming)) {
@@ -78,16 +79,22 @@ export const ReplyArea = memo(function ReplyArea({
   return (
     <div className={styles.area}>
       {title ? (
-        <div className={styles.title} onClick={() => setOpen((value) => !value)}>
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={stepsId}
+          className={styles.title}
+          onClick={() => setOpen((value) => !value)}
+        >
           <span className={clsx(styles.titleIcon, stopped && styles.stoppedIcon)}>
             <IconThinkOutline16 />
           </span>
           <span className={clsx(styles.titleText, titleActive && styles.shimmer)}>{title}</span>
           {open ? <IconChevronDownOutline14 /> : <IconChevronRightOutline14 />}
-        </div>
+        </button>
       ) : null}
       {open || !title ? (
-        <div className={styles.steps}>
+        <div id={stepsId} className={styles.steps}>
           {view.steps.map((step, index) => (
             <StepItem
               key={stepKey(step, index)}
@@ -244,6 +251,9 @@ const SearchRow = ({
   }
   return (
     <div
+      role={clickable ? 'button' : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      aria-expanded={clickable ? entry === panelEntry : undefined}
       className={clsx(
         styles.row,
         !isLast && styles.withLine,
@@ -251,6 +261,16 @@ const SearchRow = ({
         entry === panelEntry && styles.active
       )}
       onClick={clickable ? () => toggleSearchPanel(panelEntry, step.results) : undefined}
+      onKeyDown={
+        clickable
+          ? (event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                toggleSearchPanel(panelEntry, step.results)
+              }
+            }
+          : undefined
+      }
     >
       <span className={styles.rowIcon}>
         {failed ? <IconSearchWarningOutline16 /> : <IconSearchOutline16 />}
@@ -327,7 +347,8 @@ const OpenRow = ({
             <PageLink key={page.id} page={page} failedTip={t('toolOpenFailTooltip')} />
           ))}
           {count > 5 ? (
-            <span
+            <button
+              type="button"
               className={styles.chip}
               onClick={() =>
                 toggleSearchPanel(
@@ -337,7 +358,7 @@ const OpenRow = ({
               }
             >
               {t('toolOpenViewAll')}
-            </span>
+            </button>
           ) : null}
         </>
       )}

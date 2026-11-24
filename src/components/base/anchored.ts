@@ -199,12 +199,11 @@ export const useAnchoredPosition = <T extends HTMLElement, F extends HTMLElement
   return { anchorRef, floatingRef, position }
 }
 
-/** 点击浮层与触发元素之外、或按 Esc 时关闭 */
+/** 点击浮层与触发元素之外时关闭；Escape 由共享浮层栈统一处理。 */
 export const useDismiss = (
   open: boolean,
   refs: RefObject<HTMLElement | null>[],
-  onDismiss: () => void,
-  { captureEscape = false }: { captureEscape?: boolean } = {}
+  onDismiss: () => void
 ) => {
   const onDismissRef = useRef(onDismiss)
   onDismissRef.current = onDismiss
@@ -222,22 +221,11 @@ export const useDismiss = (
         onDismissRef.current()
       }
     }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') {
-        return
-      }
-      if (captureEscape) {
-        event.stopPropagation()
-      }
-      onDismissRef.current()
-    }
     document.addEventListener('pointerdown', onPointerDown)
-    document.addEventListener('keydown', onKeyDown, captureEscape)
     return () => {
       document.removeEventListener('pointerdown', onPointerDown)
-      document.removeEventListener('keydown', onKeyDown, captureEscape)
     }
-  }, [open, captureEscape])
+  }, [open])
 }
 
 /** 悬停类浮层的进出延迟：同一时间只有一个待执行的切换 */

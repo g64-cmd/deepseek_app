@@ -565,6 +565,7 @@ test('full backup preserves originals retained in memory after all storage write
           headers: { 'Content-Type': 'text/event-stream' },
         })
   const file = new File(['synthetic-pdf-original'], 'fixture.pdf', { type: 'application/pdf' })
+  api.setDocBillingAcked(true)
   assert.equal(api.addDraftFiles(id, [file], 'fixture-only'), null)
   const localId = api.getDraft(id).attachments[0].id
   for (let i = 0; i < 100 && api.useUploads.getState().tasks[localId]?.status !== 'done'; i++)

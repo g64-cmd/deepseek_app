@@ -12,6 +12,10 @@ import {
   cancelUpload,
   checkImageFileIds,
   describeUploadError,
+  getUploadPurpose,
+  hasPendingUpload,
+  isParseBilledPurpose,
+  reuseUpload,
   uploadAttachment,
   useUploads,
 } from '../attachments.js'
@@ -19,6 +23,7 @@ import { markBalanceStale } from '../balance.js'
 import { supportsVision } from '../models.js'
 import { bumpUsageRevision } from '../usage.js'
 import { useSettings } from '../settings.js'
+import { showToast } from '../../components/base/toastState.js'
 import { appendBranch, getVisibleMessages, normalizeSession, selectVersion } from './branches.js'
 import * as db from './db.js'
 import {
@@ -32,7 +37,10 @@ import { createLatestReminder } from './latestReminder.js'
 import {
   applyEvent,
   canContinueReply,
+  countDocumentBlocks,
+  countRequestDocuments,
   getContextRounds,
+  MAX_REQUEST_DOCUMENTS,
   settleReply,
   toRequestMessages,
 } from './reply.js'
@@ -298,8 +306,12 @@ const createReply = (): AssistantMessage => {
   }
 }
 
-/** 生成被模型能力拦截的原因；调用方负责向用户解释 */
-export type GenerationBlocked = 'modelNoVision'
+/** 生成被拦截的原因；调用方负责向用户解释 */
+export type GenerationBlocked = 'modelNoVision' | 'docLimit'
+
+/** 最终请求将引用的文档数超过官方上限（20 个）时不允许发出，先拦截在新增付费上传之前 */
+const blockedByDocLimit = (history: Message[], question: UserMessage): boolean =>
+  countRequestDocuments(history, question, true) > MAX_REQUEST_DOCUMENTS
 
 /** 请求实际携带的图片附件数（提问自身 + 上下文轮次），与 prepareFiles 的上下文规则同源 */
 const countRequestImages = (history: Message[], question: UserMessage): number => {
@@ -326,6 +338,19 @@ export const countContextImages = (sessionId: string | null): number => {
   let count = 0
   for (const [user] of getContextRounds(getVisibleMessages(session))) {
     count += user.files.filter((file) => file.isImage).length
+  }
+  return count
+}
+
+/** 新提问时将随上下文携带的历史文档数（不含草稿附件）；发送前 UI 据此做文档数预检 */
+export const countContextDocuments = (sessionId: string | null): number => {
+  const session = sessionId === null ? null : getSession(sessionId)
+  if (!session) {
+    return 0
+  }
+  let count = 0
+  for (const [user] of getContextRounds(getVisibleMessages(session))) {
+    count += user.files.filter((file) => !file.isImage).length
   }
   return count
 }
@@ -689,6 +714,10 @@ export const sendMessage = (
     return false
   }
   const { text, files } = prepared
+  if (files.filter((file) => !file.isImage).length > MAX_REQUEST_DOCUMENTS) {
+    showToast({ key: 'docLimitBlocked', type: 'error' })
+    return false
+  }
   const now = Date.now()
   let sessionId = targetSessionId
   if (
@@ -723,7 +752,7 @@ export const sendMessage = (
     id: createId(),
     role: 'user',
     content: text,
-    files: files.map(({ id, serverId, name, size, isImage, mimeType }) => ({
+    files: files.map(({ id, serverId, name, size, isImage, mimeType, purpose }) => ({
       id,
       serverId,
       // 草稿附件已上传成功，每张图片都在上传前检查过长边，超限的已缩小。
@@ -732,8 +761,17 @@ export const sendMessage = (
       size,
       isImage,
       mimeType,
+      purpose,
     })),
     createdAt: now,
+  }
+  if (blockedByDocLimit(history, question)) {
+    showToast({
+      key: 'replyDocLimit',
+      params: { count: countRequestDocuments(history, question) },
+      type: 'error',
+    })
+    return false
   }
   const reply = createReply()
   updateSession(sessionId, (session) => ({
@@ -779,6 +817,9 @@ export const regenerateReply = (
   if (blockedByModelVision(useSettings.getState().model, history, question)) {
     return 'modelNoVision'
   }
+  if (blockedByDocLimit(history, question)) {
+    return 'docLimit'
+  }
   const reply = createReply()
   updateSession(sessionId, (s) => ({
     ...appendBranch(s, question.id, [reply]),
@@ -818,6 +859,9 @@ export const editMessage = (
   }
   if (blockedByModelVision(useSettings.getState().model, path.slice(0, index), question)) {
     return 'modelNoVision'
+  }
+  if (blockedByDocLimit(path.slice(0, index), question)) {
+    return 'docLimit'
   }
   const reply = createReply()
   updateSession(sessionId, (s) => ({
@@ -867,6 +911,9 @@ export const continueReply = (
   if (blockedByModelVision(previous.model ?? model, path.slice(0, -2), question)) {
     return 'modelNoVision'
   }
+  if (blockedByDocLimit(path.slice(0, -2), question)) {
+    return 'docLimit'
+  }
   const reply: AssistantMessage = {
     ...previous,
     // 未记录请求配置的回复，续写时使用当前模型和开关。
@@ -886,8 +933,12 @@ export const continueReply = (
   return undefined
 }
 
-/** 附件补传失败后重试：保留原回答位置，重新补传并请求 */
-export const retryUpload = (sessionId: string, messageId: string) => {
+/** 附件补传失败或文档失效后重试：保留原回答位置，重新补传并请求 */
+export const retryUpload = (
+  sessionId: string,
+  messageId: string,
+  options?: { reparse?: boolean; omitMissing?: boolean }
+) => {
   if (get().importingHistory || deletingSessions.has(sessionId)) {
     return
   }
@@ -897,19 +948,97 @@ export const retryUpload = (sessionId: string, messageId: string) => {
   }
   const path = getVisibleMessages(session)
   const index = path.findIndex((message) => message.id === messageId)
-  const question = path[index - 1]
+  let question = path[index - 1]
   const previous = path[index]
   if (
     question?.role !== 'user' ||
     previous?.role !== 'assistant' ||
-    previous.error?.kind !== 'upload'
+    !['upload', 'reparse', 'contextMissing'].includes(previous.error?.kind ?? '')
   ) {
+    return
+  }
+  // 只有明确的重新解析入口可授权付费；普通重试与重新生成不能绕过它。
+  if (previous.error?.kind === 'reparse' && !options?.reparse) {
+    return
+  }
+  const authorized = new Set(previous.error?.kind === 'reparse' ? previous.error.fileIds : [])
+  const omitted = new Set([
+    ...(previous.omittedFileIds ?? []),
+    ...(options?.omitMissing && previous.error?.kind === 'contextMissing'
+      ? (previous.error.fileIds ?? [])
+      : []),
+  ])
+  if (previous.error?.kind === 'reparse') {
+    // 只撤销错误发生时的旧 ID。导入提示的 null、新成功 ID 和进行中任务都不能被旧提示清掉。
+    const stale = new Map(previous.error.reparseFiles?.map((file) => [file.id, file.serverId]))
+    if (stale.size > 0) {
+      const messages = session.messages.map((message) =>
+        message.role === 'user' && message.files.some((file) => stale.has(file.id))
+          ? {
+              ...message,
+              files: message.files.map((file) => {
+                const failedId = stale.get(file.id)
+                if (!failedId || file.serverId !== failedId) {
+                  return file
+                }
+                const task = useUploads.getState().tasks[file.id]
+                return {
+                  ...file,
+                  serverId:
+                    task?.status === 'done' && task.serverId !== failedId ? task.serverId : null,
+                }
+              }),
+            }
+          : message
+      )
+      updateSession(sessionId, (current) => ({ ...current, messages }))
+      for (const [id, failedId] of stale) {
+        const task = useUploads.getState().tasks[id]
+        if (
+          failedId &&
+          task?.status === 'done' &&
+          task.serverId === failedId &&
+          !hasPendingUpload(id)
+        ) {
+          cancelUpload(id)
+        }
+      }
+      persist(sessionId)
+      question =
+        messages.find(
+          (message): message is UserMessage => message.id === question.id && message.role === 'user'
+        ) ?? question
+    }
+  }
+  // 回读刚刚清除 ID 的历史，避免把旧的请求快照再次写回。
+  const history = getVisibleMessages(getSession(sessionId) ?? session).slice(0, index - 1)
+  const nextRequest = stripRequest({
+    history,
+    question,
+    authorized,
+    omitted,
+    prefix: previous.blocks.length > 0 ? previous : undefined,
+  })
+  if (blockedByDocLimit(nextRequest.history, nextRequest.question)) {
+    // 上下文在等待重试期间增长到超限时不再发出请求，直接按超限收尾
+    updateReply(sessionId, {
+      ...previous,
+      error: {
+        kind: 'docLimit',
+        message: '',
+        localMessage: {
+          key: 'replyDocLimit',
+          params: { count: countRequestDocuments(path.slice(0, index - 1), question) },
+        },
+      },
+    })
+    persist(sessionId)
     return
   }
   const reply: AssistantMessage = { ...previous, status: 'pending', error: undefined }
   updateReply(sessionId, reply)
   persist(sessionId)
-  void streamReply(sessionId, reply, { history: path.slice(0, index - 1), question })
+  void streamReply(sessionId, reply, nextRequest)
 }
 
 type Request = {
@@ -918,6 +1047,10 @@ type Request = {
   prefix?: AssistantMessage
   /** 当前模型不支持图片时丢弃上下文历史里的图片附件（提问自身的图片由发送前 UI 处理） */
   dropHistoryImages?: boolean
+  /** 本次明确授权重新上传解析的本地附件 ID，不持久化授权。 */
+  authorized?: ReadonlySet<string>
+  /** 用户明确同意本次省略的附件，原会话元数据保持完整。 */
+  omitted?: ReadonlySet<string>
 }
 
 /** dropHistoryImages 时剔除上下文历史 user 消息里的图片附件（文档附件保留） */
@@ -927,10 +1060,34 @@ const stripHistoryImages = (message: Message): Message =>
     : message
 
 /** 请求级图片剔除策略：任何从会话重新取回消息的位置（刷新、补齐后回读）都必须再次应用 */
-const stripRequest = (request: Request): Request =>
-  request.dropHistoryImages
-    ? { ...request, history: request.history.map(stripHistoryImages) }
-    : request
+const stripRequest = (request: Request): Request => {
+  const omit = <T extends Message>(message: T): T =>
+    message.role === 'user'
+      ? { ...message, files: message.files.filter((file) => !request.omitted?.has(file.id)) }
+      : message
+  return {
+    ...request,
+    history: request.history.map((message) =>
+      omit(request.dropHistoryImages ? stripHistoryImages(message) : message)
+    ),
+    question: omit(request.question),
+  }
+}
+
+class AttachmentConsentError extends Error {
+  constructor(
+    readonly kind: 'reparse' | 'contextMissing',
+    readonly files: FileAttachment[]
+  ) {
+    super(files.map((file) => file.name).join('、'))
+  }
+}
+
+class DocumentLimitError extends Error {
+  constructor(readonly count: number) {
+    super('Request document limit exceeded')
+  }
+}
 
 /**
  * 将 serverId 写回所有引用同一附件的消息。传入 null 会清除超限旧图的 ID，触发补传。
@@ -962,8 +1119,15 @@ const saveServerIds = (sessionId: string, serverIds: ReadonlyMap<string, string 
 /**
  * 附件的服务端 id：已有直接用；正在上传的等待同一任务；否则读取本地原件补传。
  * 本地也没有原件（导入的文档附件只有元数据）时返回 null，该附件只展示、不进入请求。
+ * 补传沿用附件保存的解析方式；旧数据缺省时按扩展名推导（版面文档为图文混排）。
  */
-const ensureServerId = async (apiKey: string, file: FileAttachment): Promise<string | null> => {
+const ensureServerId = async (
+  apiKey: string,
+  file: FileAttachment,
+  signal: AbortSignal,
+  authorized?: ReadonlySet<string>
+): Promise<string | null> => {
+  signal.throwIfAborted()
   if (file.serverId) {
     return file.serverId
   }
@@ -971,11 +1135,38 @@ const ensureServerId = async (apiKey: string, file: FileAttachment): Promise<str
   if (task?.status === 'done') {
     return task.serverId
   }
+  const existing = reuseUpload(file.id, signal)
+  if (existing) {
+    return existing
+  }
   const blob = await db.loadFile(file.id)
+  signal.throwIfAborted()
   if (!blob) {
     return null
   }
-  return uploadAttachment(apiKey, file.id, blob, file.name, file.isImage)
+  // 预检后其他使用方可能取消或完成任务，读原件之后也必须重新检查。
+  const completed = useUploads.getState().tasks[file.id]
+  if (completed?.status === 'done') {
+    return completed.serverId
+  }
+  const pendingUpload = reuseUpload(file.id, signal)
+  if (pendingUpload) {
+    return pendingUpload
+  }
+  if (
+    isParseBilledPurpose(file.purpose ?? getUploadPurpose(file.name, file.isImage)) &&
+    !authorized?.has(file.id)
+  ) {
+    throw new AttachmentConsentError('reparse', [file])
+  }
+  return uploadAttachment(
+    apiKey,
+    file.id,
+    blob,
+    file.name,
+    file.purpose ?? getUploadPurpose(file.name, file.isImage),
+    signal
+  )
 }
 
 /** 用会话里的最新消息替换请求快照：重传前会重置附件的 serverId，快照必须跟着更新。
@@ -993,16 +1184,22 @@ const refreshRequest = (sessionId: string, request: Request): Request => {
     question: pick(request.question),
     prefix: request.prefix,
     dropHistoryImages: request.dropHistoryImages,
+    authorized: request.authorized,
+    omitted: request.omitted,
   })
 }
 
 /**
  * 发送前补齐附件的 serverId。
  * - 本轮提问的附件并行补齐，任一失败则整体失败，已成功的照常写回，重试时复用成功结果；
- * - 历史轮次（仅进入上下文的）中没有 serverId 的附件，多为导入的图片：从最新的消息往前逐张补传，
- *   失败静默跳过，该附件不进入本次请求，下次发送时再试。
+ * - 缺原件或需要付费解析的附件先暂停，交给用户明确选择，不开始其他补传；
+ * - 历史附件从最新轮次往前补传；失败汇总返回（dropped），调用方暂停聊天而不是静默省略。
  */
-const prepareFiles = async (sessionId: string, request: Request, signal: AbortSignal) => {
+const prepareFiles = async (
+  sessionId: string,
+  request: Request,
+  signal: AbortSignal
+): Promise<{ request: Request; dropped: FileAttachment[] }> => {
   const epoch = historyEpoch
   const isCurrent = () =>
     epoch === historyEpoch && !deletingSessions.has(sessionId) && !!getSession(sessionId)
@@ -1027,6 +1224,38 @@ const prepareFiles = async (sessionId: string, request: Request, signal: AbortSi
     ...request.question.files,
     ...getContextRounds(request.history).flatMap(([user]) => user.files),
   ]
+  // 先完整预检，再开始补传。导入原件、清掉 ID 的旧文档同样可能再次收费。
+  const missing: FileAttachment[] = []
+  const paid: FileAttachment[] = []
+  for (const file of new Map(files.map((file) => [file.id, file])).values()) {
+    if (
+      file.serverId ||
+      useUploads.getState().tasks[file.id]?.status === 'done' ||
+      hasPendingUpload(file.id)
+    ) {
+      continue
+    }
+    const blob = await Promise.race([db.loadFile(file.id), aborted])
+    assertCurrent()
+    if (!blob) {
+      missing.push(file)
+    } else if (
+      isParseBilledPurpose(file.purpose ?? getUploadPurpose(file.name, file.isImage)) &&
+      !request.authorized?.has(file.id)
+    ) {
+      paid.push(file)
+    }
+  }
+  if (missing.length) {
+    throw new AttachmentConsentError('contextMissing', missing)
+  }
+  const documents = countRequestDocuments(request.history, request.question)
+  if (documents > MAX_REQUEST_DOCUMENTS) {
+    throw new DocumentLimitError(documents)
+  }
+  if (paid.length) {
+    throw new AttachmentConsentError('reparse', paid)
+  }
   const checked = await Promise.race([checkImageFileIds(files, signal), aborted])
   assertCurrent()
   if (checked.size > 0) {
@@ -1035,17 +1264,16 @@ const prepareFiles = async (sessionId: string, request: Request, signal: AbortSi
   }
   const uploads = Promise.allSettled(
     request.question.files.map(async (file) => {
-      const serverId = await ensureServerId(apiKey, file)
+      const serverId = await ensureServerId(apiKey, file, signal, request.authorized)
       if (serverId && serverId !== file.serverId) {
         serverIds.set(file.id, serverId)
+        // 每个成功结果立即保存，不等同批其他请求结束；停止后的迟到结果也可复用。
+        if (isCurrent()) {
+          saveServerIds(sessionId, new Map([[file.id, serverId]]))
+        }
       }
     })
   )
-  void uploads.then(() => {
-    if (isCurrent()) {
-      saveServerIds(sessionId, serverIds)
-    }
-  })
   const results = await Promise.race([uploads, aborted])
   assertCurrent()
   const failed = results.find((result) => result.status === 'rejected')
@@ -1061,17 +1289,30 @@ const prepareFiles = async (sessionId: string, request: Request, signal: AbortSi
       }
     }
   }
+  const dropped: FileAttachment[] = []
   for (const file of pending.values()) {
     signal.throwIfAborted()
     try {
-      const serverId = await Promise.race([ensureServerId(apiKey, file), aborted])
+      const upload = ensureServerId(apiKey, file, signal, request.authorized).then((serverId) => {
+        // 停止只阻止聊天重发。已经完成且仍属于当前会话的上传 ID 要落盘，避免下次重复解析。
+        if (serverId && isCurrent()) {
+          saveServerIds(sessionId, new Map([[file.id, serverId]]))
+        }
+        return serverId
+      })
+      const serverId = await Promise.race([upload, aborted])
       assertCurrent()
       if (serverId) {
         serverIds.set(file.id, serverId)
-        saveServerIds(sessionId, new Map([[file.id, serverId]]))
+      } else {
+        dropped.push(file)
       }
-    } catch {
+    } catch (error) {
       assertCurrent()
+      if (error instanceof AttachmentConsentError) {
+        throw error
+      }
+      dropped.push(file)
     }
   }
 
@@ -1080,12 +1321,17 @@ const prepareFiles = async (sessionId: string, request: Request, signal: AbortSi
   const session = getSession(sessionId)
   const resolve = <T extends Message>(message: T): T =>
     (session?.messages.find((m) => m.id === message.id) as T | undefined) ?? message
-  return stripRequest({
-    history: request.history.map(resolve),
-    question: resolve(request.question),
-    prefix: request.prefix,
-    dropHistoryImages: request.dropHistoryImages,
-  })
+  return {
+    request: stripRequest({
+      history: request.history.map(resolve),
+      question: resolve(request.question),
+      prefix: request.prefix,
+      dropHistoryImages: request.dropHistoryImages,
+      authorized: request.authorized,
+      omitted: request.omitted,
+    }),
+    dropped,
+  }
 }
 
 /** 本次请求实际会用到的服务端 file_id */
@@ -1109,22 +1355,27 @@ const collectServerFileIds = (request: Request): Set<string> => {
  * 服务端判定 file_id 失效时，清掉对应附件的 serverId 并丢弃旧的上传任务，
  * 下一次补齐会重新读取本地原件上传。报错里点名了 file_id 就只重置这些，
  * 没点名（如 invalid file_id）则重置本次请求用到的全部附件。
+ *
+ * 版面解析文档的重新上传意味着再次按页计费，不能自动重试：这类附件保持失效的
+ * serverId 不动，记入 parseStale 由调用方请求用户明确授权后（retryUpload）再清。
  */
-const reuploadInvalidatedFiles = (sessionId: string, request: Request, error: unknown): boolean => {
+const reuploadInvalidatedFiles = (
+  sessionId: string,
+  request: Request,
+  error: unknown
+): { retry: boolean; parseStale: FileAttachment[] } => {
   if (!(error instanceof ApiError) || !getFileErrorCode(error)) {
-    return false
+    return { retry: false, parseStale: [] }
   }
   const mentioned = extractFileIds(error.message)
   // 重试时原始快照里还是上一轮已被清掉的 serverId，先换成会话里的最新消息
-  const targets =
-    mentioned.length > 0
-      ? new Set(mentioned)
-      : collectServerFileIds(refreshRequest(sessionId, request))
+  const targets = mentioned.length > 0 ? new Set(mentioned) : collectServerFileIds(request)
   const session = getSession(sessionId)
   if (targets.size === 0 || !session) {
-    return false
+    return { retry: false, parseStale: [] }
   }
   const localIds: string[] = []
+  const parseStale: FileAttachment[] = []
   const messages = session.messages.map((message) => {
     if (message.role !== 'user') {
       return message
@@ -1134,6 +1385,13 @@ const reuploadInvalidatedFiles = (sessionId: string, request: Request, error: un
       if (!file.serverId || !targets.has(file.serverId)) {
         return file
       }
+      if (isParseBilledPurpose(file.purpose ?? getUploadPurpose(file.name, file.isImage))) {
+        // 保留失效的 serverId：任何后续请求都会再次失败并提示，直到用户明确授权重新解析
+        if (!parseStale.some((item) => item.id === file.id)) {
+          parseStale.push(file)
+        }
+        return file
+      }
       localIds.push(file.id)
       changed = true
       return { ...file, serverId: null }
@@ -1141,13 +1399,14 @@ const reuploadInvalidatedFiles = (sessionId: string, request: Request, error: un
     return changed ? { ...message, files } : message
   })
   if (localIds.length === 0) {
-    return false
+    return { retry: false, parseStale }
   }
   updateSession(sessionId, (current) => ({ ...current, messages }))
   // 上传任务里可能还留着同一个失效的 serverId，清掉后 ensureServerId 才会重新上传
   localIds.forEach(cancelUpload)
   persist(sessionId)
-  return true
+  // 有等待授权的解析文档时不自动重试，避免其余附件白白重传后再次失败
+  return { retry: parseStale.length === 0, parseStale }
 }
 
 /** 重传前的退避等待；停止生成时立即返回，由调用方按已停止收尾 */
@@ -1178,7 +1437,17 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
     titleRequests.add(controller)
   }
   set((state) => ({ streaming: { ...state.streaming, [sessionId]: controller } }))
-  let reply = initial
+  const omitted = new Set([
+    ...(initial.omittedFileIds ?? []),
+    ...(request.omitted ?? []),
+    ...(request.dropHistoryImages
+      ? getContextRounds(request.history).flatMap(([user]) =>
+          user.files.filter((file) => file.isImage).map((file) => file.id)
+        )
+      : []),
+  ])
+  request = stripRequest({ ...request, omitted })
+  let reply: AssistantMessage = { ...initial, omittedFileIds: [...omitted] }
   let frame = 0
   const flush = () => {
     cancelAnimationFrame(frame)
@@ -1192,8 +1461,17 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
       /** 附件补齐前出错属于上传失败，请求还没有发出 */
       let preparing = true
       let receivedContent = false
+      let sentRequest: Request | undefined
       try {
-        const prepared = await prepareFiles(sessionId, request, controller.signal)
+        const { request: prepared, dropped } = await prepareFiles(
+          sessionId,
+          request,
+          controller.signal
+        )
+        controller.signal.throwIfAborted()
+        if (dropped.length) {
+          throw new AttachmentConsentError('contextMissing', dropped)
+        }
         preparing = false
         // 附件就绪后获取本轮信息；续写沿用原回答快照，重新生成的快照独立保存。
         const latestReminder = prepared.prefix
@@ -1209,6 +1487,17 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
           initial.thinking ?? false,
           latestReminder
         )
+        // 最终请求守卫：按实际组装出的文档块数拦截，超限时请求不发出
+        const documents = countDocumentBlocks(messages)
+        if (documents > MAX_REQUEST_DOCUMENTS) {
+          reply = settleReply(reply, 'error', Date.now(), {
+            kind: 'docLimit',
+            message: '',
+            localMessage: { key: 'replyDocLimit', params: { count: documents } },
+          })
+          break
+        }
+        sentRequest = prepared
         const events = streamMessage(
           useSettings.getState().apiKey ?? '',
           {
@@ -1255,6 +1544,29 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
           break
         }
         if (preparing) {
+          if (error instanceof DocumentLimitError) {
+            reply = settleReply(reply, 'error', Date.now(), {
+              kind: 'docLimit',
+              message: '',
+              localMessage: { key: 'replyDocLimit', params: { count: error.count } },
+            })
+            break
+          }
+          if (error instanceof AttachmentConsentError) {
+            reply = settleReply(reply, 'error', Date.now(), {
+              kind: error.kind,
+              message: '',
+              localMessage: {
+                key: error.kind === 'reparse' ? 'replyFileExpiredReparse' : 'replyContextMissing',
+                params: { count: error.files.length, names: error.message },
+              },
+              fileIds: error.files.map((file) => file.id),
+              ...(error.kind === 'reparse'
+                ? { reparseFiles: error.files.map(({ id, serverId }) => ({ id, serverId })) }
+                : {}),
+            })
+            break
+          }
           reply = settleReply(reply, 'error', Date.now(), {
             kind: 'upload',
             message: '',
@@ -1264,11 +1576,22 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
           break
         }
         // 附件失效：重新补传后重发。收到过内容块（含丢弃的客户端工具）后不自动重发。
-        if (
-          attempt < FILE_RETRY_LIMIT &&
-          !receivedContent &&
-          reuploadInvalidatedFiles(sessionId, request, error)
-        ) {
+        const invalidated = reuploadInvalidatedFiles(sessionId, sentRequest ?? request, error)
+        if (invalidated.parseStale.length > 0) {
+          // 失效附件里有按页计费的解析文档：等待用户明确授权重新解析，不自动重传
+          reply = settleReply(reply, 'error', Date.now(), {
+            kind: 'reparse',
+            message: '',
+            localMessage: {
+              key: 'replyFileExpiredReparse',
+              params: { count: invalidated.parseStale.length },
+            },
+            fileIds: invalidated.parseStale.map((file) => file.id),
+            reparseFiles: invalidated.parseStale.map(({ id, serverId }) => ({ id, serverId })),
+          })
+          break
+        }
+        if (attempt < FILE_RETRY_LIMIT && !receivedContent && invalidated.retry) {
           await waitForRetry(attempt, controller.signal)
           if (controller.signal.aborted) {
             reply = settleReply(reply, 'stopped', Date.now())

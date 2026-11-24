@@ -196,6 +196,8 @@ export type FileEntry = {
   height: number | null
   /** 完整备份（v4）专有：本地记录的 MIME，导入时直接还原 */
   mime_type?: string | null
+  /** v4 可选扩展；缺失时沿用旧版按扩展名推导的语义。 */
+  purpose?: 'user_data' | 'text_recognition' | 'rich_layout_recognition' | null
 }
 
 /** app_settings.json，仅完整备份携带；永不包含 API Key */
@@ -212,6 +214,7 @@ export type AppSettingsFile = {
     sider_collapsed: boolean
     model: string
     thinking_effort: string
+    doc_parse_mode?: string
   }
   /** 未发送的草稿文本：会话 ID（新对话为 'null'）→ 文本 */
   drafts: Record<string, string>

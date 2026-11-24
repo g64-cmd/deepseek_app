@@ -14,7 +14,10 @@ export type Locale = 'zh-CN' | 'en-US'
 /** 主题偏好；默认跟随系统 */
 export type ThemePreference = 'light' | 'dark' | 'system'
 
-/** 本机设置，存 localStorage：API Key、语言、主题、位置、朗读音色、深度思考与智能搜索开关、思考强度、模型、侧边栏收起状态 */
+/** 版面文档的解析方式：仅文字或图文混排；只影响之后的上传，已上传的 purpose 不变 */
+export type DocParseMode = 'text' | 'rich'
+
+/** 本机设置，存 localStorage：API Key、语言、主题、位置、朗读音色、深度思考与智能搜索开关、思考强度、模型、文档解析方式、侧边栏收起状态 */
 type Settings = {
   apiKey: string | null
   locale: Locale
@@ -28,6 +31,10 @@ type Settings = {
   model: ChatModel
   /** 思考强度；仅深度思考开启时随请求携带 */
   thinkingEffort: EffortLevel
+  /** 版面文档上传时的解析方式；保存在每条附件上的 purpose 优先于该默认值 */
+  docParseMode: DocParseMode
+  /** 首次上传版面文档前的计费说明是否已确认 */
+  docBillingAcked: boolean
 }
 
 const KEYS = {
@@ -41,6 +48,8 @@ const KEYS = {
   siderCollapsed: 'chat-demo:sider-collapsed',
   model: 'chat-demo:model',
   thinkingEffort: 'chat-demo:thinking-effort',
+  docParseMode: 'chat-demo:doc-parse-mode',
+  docBillingAcked: 'chat-demo:doc-billing-ack',
 } as const
 
 const read = (key: string) => {
@@ -111,6 +120,10 @@ const initialThinkingEffort = (): EffortLevel => {
   return saved !== null && isEffortLevel(saved) ? saved : DEFAULT_EFFORT
 }
 
+/** 未保存过时沿用既有行为：版面文档按图文混排解析 */
+const initialDocParseMode = (): DocParseMode =>
+  read(KEYS.docParseMode) === 'text' ? 'text' : 'rich'
+
 export const useSettings = create<Settings>(() => ({
   // 原生侧 API Key 存于 Keystore 加密存储（见 hydrateApiKey），Web 侧仍读 localStorage
   apiKey: secureCredentialsAvailable ? null : read(KEYS.apiKey),
@@ -123,6 +136,8 @@ export const useSettings = create<Settings>(() => ({
   siderCollapsed: read(KEYS.siderCollapsed) === 'true',
   model: initialModel(),
   thinkingEffort: initialThinkingEffort(),
+  docParseMode: initialDocParseMode(),
+  docBillingAcked: read(KEYS.docBillingAcked) === 'true',
 }))
 
 export const setLocale = (locale: Locale) => {
@@ -202,4 +217,14 @@ export const setModel = (model: ChatModel) => {
 export const setThinkingEffort = (thinkingEffort: EffortLevel) => {
   write(KEYS.thinkingEffort, thinkingEffort)
   useSettings.setState({ thinkingEffort })
+}
+
+export const setDocParseMode = (docParseMode: DocParseMode) => {
+  write(KEYS.docParseMode, docParseMode)
+  useSettings.setState({ docParseMode })
+}
+
+export const setDocBillingAcked = (docBillingAcked: boolean) => {
+  write(KEYS.docBillingAcked, String(docBillingAcked))
+  useSettings.setState({ docBillingAcked })
 }

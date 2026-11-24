@@ -1,5 +1,7 @@
 import clsx from 'clsx'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { useFocusLayer } from '../base/useFocusLayer.js'
 import { useTranslate } from '../../i18n/index.js'
 import { IconPanelLeftOutline16, IconSettingsOutline16, NewChatIcon } from '../base/icons.js'
 import { setSiderCollapsed } from '../../services/settings.js'
@@ -143,15 +145,35 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
 /** 移动端抽屉：浮在页面上方，点空白区域关闭。 */
 export const MobileSider = () => {
   const open = useMobileSider((state) => state.open)
+  const t = useTranslate()
+  const root = useRef<HTMLDivElement>(null)
+  useFocusLayer(root, closeMobileSider, {
+    open,
+    // Android 触控激活按钮不一定产生 DOM focus，返回时仍应回到明确的抽屉入口。
+    returnFocus: () => document.querySelector<HTMLElement>('[data-open-sidebar]'),
+  })
   if (!open) {
     return null
   }
-  return (
-    <>
-      <div className={styles.drawerMask} onClick={closeMobileSider} />
-      <div className={styles.drawer}>
+  return createPortal(
+    <div
+      ref={root}
+      role="dialog"
+      aria-modal="true"
+      aria-label={t('expandSiderbarButton')}
+      tabIndex={-1}
+      className={styles.drawerMask}
+      onClick={(event) => {
+        // 遮罩与抽屉属于同一可交互浮层；页面其余区域继续由焦点层隔离。
+        if (event.target === event.currentTarget) {
+          closeMobileSider()
+        }
+      }}
+    >
+      <div data-mobile-drawer-panel className={styles.drawer}>
         <Sider mobile />
       </div>
-    </>
+    </div>,
+    document.body
   )
 }

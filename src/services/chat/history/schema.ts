@@ -101,6 +101,13 @@ const fileEntry: Read<FileEntry> = (value) => {
     width: nullable(count)(item.width),
     height: nullable(count)(item.height),
     ...('mime_type' in item ? { mime_type: nullable(string)(item.mime_type) } : {}),
+    // 未知值保留旧数据的缺省语义，不能用导入内容改变为任意上传用途。
+    ...(item.purpose === null ||
+    item.purpose === 'user_data' ||
+    item.purpose === 'text_recognition' ||
+    item.purpose === 'rich_layout_recognition'
+      ? { purpose: item.purpose }
+      : {}),
   }
 }
 
@@ -298,6 +305,9 @@ export const readAppSettings = (value: unknown): AppSettingsFile | null => {
         sider_collapsed: boolean(settings.sider_collapsed),
         model: string(settings.model),
         thinking_effort: string(settings.thinking_effort),
+        ...(typeof settings.doc_parse_mode === 'string'
+          ? { doc_parse_mode: settings.doc_parse_mode }
+          : {}),
       },
       drafts: Object.fromEntries(
         Object.entries(record(item.drafts)).filter(

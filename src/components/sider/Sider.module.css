@@ -16,7 +16,7 @@
   justify-content: space-between;
   gap: 8px;
   box-sizing: border-box;
-  height: 48px;
+  min-height: 48px;
   margin-bottom: 16px;
   padding: 15px 0 10px 4px;
   flex-shrink: 0;
@@ -193,7 +193,7 @@
 }
 
 .drawer {
-  position: absolute;
+  position: fixed;
   top: 0;
   bottom: 0;
   left: 0;
@@ -201,9 +201,10 @@
 }
 
 .drawerMask {
-  position: absolute;
+  position: fixed;
   inset: 0;
   z-index: 799;
+  background: rgb(0 0 0 / 25%);
 }
 
 .mobile {

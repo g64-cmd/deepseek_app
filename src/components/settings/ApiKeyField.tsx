@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { IconEditOutline16 } from '../base/icons.js'
 import { useSettings } from '../../services/settings.js'
 import { useIsMobile } from '../../app/viewport.js'
@@ -20,13 +20,16 @@ type ApiKeyEditor = ReturnType<typeof useApiKeyEditor>
 /** API Key：保存后只显示掩码，点编辑按钮才能重新输入 */
 export const ApiKeyField = ({ editor }: { editor: ApiKeyEditor }) => {
   const t = useTranslate()
+  const id = useId()
   const isMobile = useIsMobile()
   const { apiKey, editing, setEditing, form, showInput } = editor
 
   return (
     <div className={styles.cell}>
       <div className={styles.apiKey}>
-        <div className={styles.label}>{t('apiKeyStart')}</div>
+        <label htmlFor={id} className={styles.label}>
+          {t('apiKeyStart')}
+        </label>
         {apiKey && !editing ? (
           <div className={styles.apiKeySaved}>
             <span className={styles.apiKeyMask}>{'*'.repeat(apiKey.length)}</span>
@@ -40,6 +43,9 @@ export const ApiKeyField = ({ editor }: { editor: ApiKeyEditor }) => {
         ) : (
           <div className={styles.apiKeyInput}>
             <input
+              id={id}
+              aria-invalid={!!form.error}
+              aria-describedby={form.error ? `${id}-error` : undefined}
               type="password"
               placeholder={t('apiKeyPlaceholder')}
               autoComplete="off"
@@ -77,7 +83,11 @@ export const ApiKeyField = ({ editor }: { editor: ApiKeyEditor }) => {
             ) : null}
           </div>
         )}
-        {showInput && form.error ? <div className={styles.error}>{form.error}</div> : null}
+        {showInput && form.error ? (
+          <div id={`${id}-error`} role="alert" className={styles.error}>
+            {form.error}
+          </div>
+        ) : null}
       </div>
     </div>
   )

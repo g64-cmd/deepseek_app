@@ -356,3 +356,35 @@
     margin-top: 2px;
   }
 }
+
+.documentFiles {
+  max-height: 120px;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  padding-left: 24px;
+}
+
+.documentMode {
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+
+  > label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+  }
+}
+
+.documentDialog {
+  max-height: calc(100vh - 32px);
+
+  > :last-child {
+    flex-wrap: wrap;
+  }
+}
+
+.documentMain {
+  min-height: 0;
+  overflow-y: auto;
+}

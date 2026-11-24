@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslate } from '../../i18n/index.js'
 import { platform } from '../../platform/index.js'
-import { openModals } from '../base/modalStack.js'
+import { useFocusLayer } from '../base/useFocusLayer.js'
 import { Button } from '../base/Button.js'
 import { IconButton } from '../base/IconButton.js'
 import { IconCloseOutline16, IconPhotoErrorFill20 } from '../base/icons.js'
@@ -32,6 +32,8 @@ export const ImageViewer = ({
   const [sharing, setSharing] = useState(false)
   const [zoom, setZoom] = useState({ scale: 1, x: 0, y: 0 })
   const imageRef = useRef<HTMLImageElement>(null)
+  const rootRef = useRef<HTMLDivElement>(null)
+  useFocusLayer(rootRef, onClose)
   const dragRef = useRef<{
     pointer: number
     startX: number
@@ -39,24 +41,6 @@ export const ImageViewer = ({
     originX: number
     originY: number
   } | null>(null)
-
-  // 注册进浮层栈；onClose 引用变化不重复注册（与 Modal 相同的 ref 模式）
-  const onCloseRef = useRef(onClose)
-  onCloseRef.current = onClose
-  useEffect(() => {
-    const entry = { close: () => onCloseRef.current() }
-    openModals.push(entry)
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && openModals.at(-1) === entry) {
-        entry.close()
-      }
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      openModals.splice(openModals.indexOf(entry), 1)
-      document.removeEventListener('keydown', onKeyDown)
-    }
-  }, [])
 
   const toggleZoom = (clientX: number, clientY: number) => {
     if (zoom.scale === 1) {
@@ -75,6 +59,11 @@ export const ImageViewer = ({
 
   return createPortal(
     <div
+      ref={rootRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label={name}
+      tabIndex={-1}
       className={styles.overlay}
       onClick={(event) => {
         if (event.target === event.currentTarget) {
@@ -83,7 +72,9 @@ export const ImageViewer = ({
       }}
     >
       <div className={styles.header}>
-        <span className={styles.name}>{name}</span>
+        <span tabIndex={0} className={styles.name}>
+          {name}
+        </span>
         <IconButton
           tone="primary"
           icon={<IconCloseOutline16 />}
@@ -150,6 +141,47 @@ export const ImageViewer = ({
         )}
       </div>
       <div className={styles.footer}>
+        <Button
+          variant="outlined"
+          size="s"
+          disabled={!url || failedUrl === url || zoom.scale > 1}
+          onClick={() => {
+            const rect = imageRef.current?.getBoundingClientRect()
+            if (rect) {
+              toggleZoom(rect.left + rect.width / 2, rect.top + rect.height / 2)
+            }
+          }}
+        >
+          {t('imageViewerZoomIn')}
+        </Button>
+        <Button
+          variant="outlined"
+          size="s"
+          disabled={zoom.scale === 1}
+          onClick={() => setZoom({ scale: 1, x: 0, y: 0 })}
+        >
+          {t('imageViewerReset')}
+        </Button>
+        {zoom.scale > 1 ? (
+          <>
+            {(['Left', 'Right', 'Up', 'Down'] as const).map((direction) => (
+              <Button
+                key={direction}
+                variant="outlined"
+                size="s"
+                onClick={() =>
+                  setZoom((current) => ({
+                    ...current,
+                    x: current.x + (direction === 'Left' ? 40 : direction === 'Right' ? -40 : 0),
+                    y: current.y + (direction === 'Up' ? 40 : direction === 'Down' ? -40 : 0),
+                  }))
+                }
+              >
+                {t(`imageViewerPan${direction}`)}
+              </Button>
+            ))}
+          </>
+        ) : null}
         <Button
           variant="outlined"
           size="s"

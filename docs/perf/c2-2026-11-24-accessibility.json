@@ -1,0 +1,454 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-24",
+  "timezone": "Asia/Shanghai",
+  "scope": "C2 first implementation batch; not full C2/device or Phase C acceptance",
+  "checks": {
+    "node": {
+      "command": "pnpm test",
+      "passed": 115,
+      "total": 115
+    },
+    "browser": {
+      "command": "pnpm test:c2",
+      "passed": 12,
+      "total": 12,
+      "environment": {
+        "protocolVersion": "1.3",
+        "product": "Chrome/154.0.8037.98",
+        "revision": "@b859317bf11f6be47f9b7799ec690a0a42a1fb33",
+        "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+        "jsVersion": "15.4.80.20"
+      },
+      "isolatedProfile": true,
+      "externalHttpsBlocked": true,
+      "textScaleSimulation": "Double computed CSS font sizes and line heights; Android OS font scaling tested separately",
+      "validForStyledLayout": false,
+      "correction": "C2-R01: main.css returned 404 and the description selector matched zero nodes. The historical 12/12 is not styled layout or interaction evidence; fixed rerun is recorded separately."
+    },
+    "type": "passed",
+    "lint": "passed",
+    "productionWebAndCapacitorSync": "passed",
+    "c0Debug": {
+      "passed": true,
+      "seconds": 23,
+      "tasks": 184
+    },
+    "normalDebug": {
+      "passed": true,
+      "seconds": 19,
+      "tasks": 184
+    }
+  },
+  "android": {
+    "status": "complete",
+    "device": "Pixel_8 AVD / Android 14 API 34 x86_64",
+    "webview": "113.0.5672.136",
+    "packageId": "com.g64_cmd.whalechat.c0",
+    "paidRequests": false,
+    "checks": [
+      "Android Back closes settings",
+      "Android Back closes Portal menu and preserves drawer",
+      "Android Back closes drawer and restores trigger",
+      "font scale 1 and 2 text views; actual landscape viewport confirmed"
+    ],
+    "screens": [
+      {
+        "label": "font2-portrait-general-top",
+        "screenshot": "tmp/c2-android/font2-portrait-general-top.png",
+        "width": 412,
+        "height": 840,
+        "dpr": 2.625,
+        "scrollWidth": 412,
+        "dialog": {
+          "x": 0,
+          "y": 64,
+          "width": 412,
+          "height": 776,
+          "scrollHeight": 776
+        },
+        "panel": {
+          "height": 554,
+          "scrollHeight": 1378,
+          "scrollWidth": 388,
+          "width": 388
+        },
+        "focus": {
+          "tag": "DIV",
+          "name": null,
+          "text": "设置"
+        },
+        "font": "28px",
+        "rows": [
+          {
+            "name": "语言",
+            "x": 24,
+            "right": 181.33334350585938,
+            "width": 157,
+            "height": 48,
+            "font": "28px"
+          },
+          {
+            "name": "朗读音色",
+            "x": 24,
+            "right": 237.33334350585938,
+            "width": 213,
+            "height": 48,
+            "font": "28px"
+          },
+          {
+            "name": "请选择国家或地区",
+            "x": 103.19047546386719,
+            "right": 388.1904754638672,
+            "width": 285,
+            "height": 48,
+            "font": "28px"
+          },
+          {
+            "name": "模型",
+            "x": 24,
+            "right": 284.19049072265625,
+            "width": 260,
+            "height": 48,
+            "font": "28px"
+          },
+          {
+            "name": "思考强度",
+            "x": 24,
+            "right": 125.33333587646484,
+            "width": 101,
+            "height": 48,
+            "font": "28px"
+          },
+          {
+            "name": "文档解析方式",
+            "x": 24,
+            "right": 388.19049072265625,
+            "width": 364,
+            "height": 48,
+            "font": "28px"
+          }
+        ]
+      },
+      {
+        "label": "font2-portrait-general-bottom",
+        "screenshot": "tmp/c2-android/font2-portrait-general-bottom.png",
+        "width": 412,
+        "height": 840,
+        "dpr": 2.625,
+        "scrollWidth": 412,
+        "dialog": {
+          "x": 0,
+          "y": 64,
+          "width": 412,
+          "height": 776,
+          "scrollHeight": 776
+        },
+        "panel": {
+          "height": 554,
+          "scrollHeight": 1378,
+          "scrollWidth": 388,
+          "width": 388
+        },
+        "focus": {
+          "tag": "DIV",
+          "name": null,
+          "text": "设置"
+        },
+        "font": "28px",
+        "rows": [
+          {
+            "name": "语言",
+            "x": 24,
+            "right": 181.33334350585938,
+            "width": 157,
+            "height": 48,
+            "font": "28px"
+          },
+          {
+            "name": "朗读音色",
+            "x": 24,
+            "right": 237.33334350585938,
+            "width": 213,
+            "height": 48,
+            "font": "28px"
+          },
+          {
+            "name": "请选择国家或地区",
+            "x": 103.19047546386719,
+            "right": 388.1904754638672,
+            "width": 285,
+            "height": 48,
+            "font": "28px"
+          },
+          {
+            "name": "模型",
+            "x": 24,
+            "right": 284.19049072265625,
+            "width": 260,
+            "height": 48,
+            "font": "28px"
+          },
+          {
+            "name": "思考强度",
+            "x": 24,
+            "right": 125.33333587646484,
+            "width": 101,
+            "height": 48,
+            "font": "28px"
+          },
+          {
+            "name": "文档解析方式",
+            "x": 24,
+            "right": 388.19049072265625,
+            "width": 364,
+            "height": 48,
+            "font": "28px"
+          }
+        ]
+      },
+      {
+        "label": "font2-portrait-data",
+        "screenshot": "tmp/c2-android/font2-portrait-data.png",
+        "width": 412,
+        "height": 840,
+        "dpr": 2.625,
+        "scrollWidth": 412,
+        "dialog": {
+          "x": 0,
+          "y": 64,
+          "width": 412,
+          "height": 776,
+          "scrollHeight": 776
+        },
+        "panel": {
+          "height": 554,
+          "scrollHeight": 1040,
+          "scrollWidth": 388,
+          "width": 388
+        },
+        "focus": {
+          "tag": "DIV",
+          "name": null,
+          "text": "设置"
+        },
+        "font": "28px",
+        "rows": []
+      },
+      {
+        "label": "font2-portrait-drawer",
+        "screenshot": "tmp/c2-android/font2-portrait-drawer.png",
+        "width": 412,
+        "height": 840,
+        "dpr": 2.625,
+        "scrollWidth": 412,
+        "dialog": {
+          "x": 0,
+          "y": 0,
+          "width": 300,
+          "height": 840,
+          "scrollHeight": 840
+        },
+        "panel": null,
+        "focus": {
+          "tag": "BUTTON",
+          "name": "收起边栏",
+          "text": ""
+        },
+        "font": "28px",
+        "rows": []
+      },
+      {
+        "label": "font2-portrait-text",
+        "screenshot": "tmp/c2-android/font2-portrait-text.png",
+        "width": 412,
+        "height": 840,
+        "dpr": 2.625,
+        "scrollWidth": 412,
+        "dialog": null,
+        "panel": null,
+        "focus": {
+          "tag": "BODY",
+          "name": null,
+          "text": "C2 离线可访问性检查一个可读的问题可读正文。中文 English 的长段落。中文 English 的长段落。中文 En"
+        },
+        "font": null,
+        "rows": []
+      },
+      {
+        "label": "font2-landscape-general",
+        "screenshot": "tmp/c2-android/font2-landscape-general.png",
+        "width": 864,
+        "height": 360,
+        "dpr": 2.625,
+        "scrollWidth": 864,
+        "dialog": {
+          "x": 52,
+          "y": 16,
+          "width": 760,
+          "height": 328,
+          "scrollHeight": 328
+        },
+        "panel": {
+          "height": 232,
+          "scrollHeight": 1055,
+          "scrollWidth": 564,
+          "width": 564
+        },
+        "focus": {
+          "tag": "DIV",
+          "name": null,
+          "text": "设置"
+        },
+        "font": "28px",
+        "rows": [
+          {
+            "name": "语言",
+            "x": 630.6666870117188,
+            "right": 788.0000305175781,
+            "width": 157,
+            "height": 48,
+            "font": "28px"
+          },
+          {
+            "name": "朗读音色",
+            "x": 574.6666870117188,
+            "right": 788.0000305175781,
+            "width": 213,
+            "height": 48,
+            "font": "28px"
+          },
+          {
+            "name": "请选择国家或地区",
+            "x": 424.3333435058594,
+            "right": 709.3333435058594,
+            "width": 285,
+            "height": 48,
+            "font": "28px"
+          },
+          {
+            "name": "模型",
+            "x": 527.8095092773438,
+            "right": 788,
+            "width": 260,
+            "height": 48,
+            "font": "28px"
+          },
+          {
+            "name": "思考强度",
+            "x": 686.6666870117188,
+            "right": 788.0000228881836,
+            "width": 101,
+            "height": 48,
+            "font": "28px"
+          },
+          {
+            "name": "文档解析方式",
+            "x": 272,
+            "right": 653.3333435058594,
+            "width": 381,
+            "height": 48,
+            "font": "28px"
+          }
+        ]
+      },
+      {
+        "label": "font1-portrait-text",
+        "screenshot": "tmp/c2-android/font1-portrait-text.png",
+        "width": 412,
+        "height": 840,
+        "dpr": 2.625,
+        "scrollWidth": 412,
+        "dialog": null,
+        "panel": null,
+        "focus": {
+          "tag": "BODY",
+          "name": null,
+          "text": "C2 离线可访问性检查一个可读的问题可读正文。中文 English 的长段落。中文 English 的长段落。中文 En"
+        },
+        "font": null,
+        "rows": []
+      }
+    ],
+    "systemFontBefore": {
+      "original": "null",
+      "out": [
+        {
+          "scale": 1,
+          "result": {
+            "cssFont": "16px",
+            "lineHeight": "24px",
+            "width": 202.45834350585938,
+            "height": 42.66666793823242,
+            "viewport": {
+              "width": 412,
+              "height": 840,
+              "dpr": 2.625
+            },
+            "textAdjust": "100%"
+          }
+        },
+        {
+          "scale": 2,
+          "result": {
+            "cssFont": "32px",
+            "lineHeight": "48px",
+            "width": 199.6904754638672,
+            "height": 133.71429443359375,
+            "viewport": {
+              "width": 412,
+              "height": 840,
+              "dpr": 2.625
+            },
+            "textAdjust": "100%"
+          }
+        }
+      ]
+    },
+    "originalSettings": {
+      "font": "1.0",
+      "rotation": "0",
+      "autoRotate": "1"
+    }
+  },
+  "artifacts": {
+    "c0Apk": {
+      "path": "tmp/c2-current-c0.apk",
+      "sha256": "3cc7a5edba649dcd453d963343806e3ae2e331a227d00b9f0d4dcec441c4d181"
+    },
+    "normalApk": {
+      "path": "android/app/build/outputs/apk/debug/app-debug.apk",
+      "packageId": "com.g64_cmd.whalechat",
+      "sha256": "484f3086a3e9a1a442b2fc7e91a84c10eafc10896c1de92f616a03b2261e3d78"
+    },
+    "deviceReport": "tmp/c2-android/report.json",
+    "deviceDriver": "tmp/c2-android.mjs",
+    "browserLog": "tmp/c2-browser-final.log",
+    "nodeLog": "tmp/c2-tests-final.log"
+  },
+  "sourceHashes": {
+    "src/components/base/modalStack.ts": "3a9eeb34bbd8b6751bdaaf3986adf2786a5a51a890becdfbdaf93562130d01b1",
+    "src/components/base/useFocusLayer.ts": "7e61f9aad28d14490f06338153ed99f1b50609a3c996cc83ef00baa393cfffb2",
+    "src/components/base/Modal.tsx": "374596450c49931dc996b472d7249b539e3c3009abae32005f5143453eb205fc",
+    "src/components/base/Menu.tsx": "672890b9db3d70257a7e4f68c3e7a7d5754e127e386df35f40a18b8cad2b0058",
+    "src/components/base/Select.tsx": "a1e218fdefd8e21fa49b12fa434062a4173cda20878c5947a633b3679d034dac",
+    "src/components/messages/ReplyStatus.tsx": "536633211cf59f4b04905b9b09479cbfbdf5b30e1e53f5791122900aaad1cb55",
+    "src/components/messages/ImageViewer.tsx": "82b7511e8aa30c4d8087423065cff037d4cd68bd85a60133e9a3834880ae6d8e",
+    "src/components/search/SearchPanel.tsx": "f8a525ae0b99b8466e200ad840a52b4dc213a60fa4ed3124ab30ab0ddb6c39a9",
+    "src/components/settings/SettingsDialog.tsx": "b9f4e5861552bd51b41354a1b6e8eb53de7331cb89eea8d86e779c32aec4e1ea",
+    "src/components/settings/Settings.module.css": "cc27afc1401c352a3d4adb6a193381a6c2b1d61bf7ac4fb4c34d33e8258836d8",
+    "src/components/sider/Sider.tsx": "4e23d09440f3cd80fb9dfb41a578b111caf1246180c565ae289b866df6cd6bb1",
+    "src/components/sider/SessionItem.tsx": "ad3248ba173c1b2777c83198417efa3c3f5100ebe5d11105d07b178d35c2e433",
+    "tests/accessibility-browser.test.mjs": "9ae9a7ecabe6006a2768d60c5b0d0e1451ebddf4eed6a71cda4467e04ea959be",
+    "tests/helpers/entries/accessibility.tsx": "e026b5e621d7e18fecf4927ac06c2f162756df26d8e0b7c12ecbd9ff42d3656b"
+  },
+  "pending": [
+    "TalkBack names, order and accessibility focus on target hardware",
+    "Modern WebView and target physical devices",
+    "System display scaling, split screen and full hit-target/contrast audit",
+    "Full real request/speech/backup screen-reader workflow",
+    "C1 branch anchors/rich-height/IME and complete operation combinations",
+    "C1 performance matrix on the C2 build"
+  ],
+  "supersededBy": "c2-2026-11-24-review-fixes.json"
+}

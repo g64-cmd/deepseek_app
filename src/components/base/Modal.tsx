@@ -1,10 +1,10 @@
 import clsx from 'clsx'
-import { useEffect, useId, useRef, type ReactNode } from 'react'
+import { useId, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslate } from '../../i18n/index.js'
 import { IconCloseOutline16 } from './icons.js'
 import { IconButton } from './IconButton.js'
-import { openModals } from './modalStack.js'
+import { useFocusLayer } from './useFocusLayer.js'
 import styles from './Modal.module.css'
 
 export { closeTopModal } from './modalStack.js'
@@ -31,22 +31,12 @@ export const Modal = ({
 }) => {
   const t = useTranslate()
   const titleId = useId()
-  const onCloseRef = useRef(onClose)
-  onCloseRef.current = onClose
-  useEffect(() => {
-    const entry = { close: () => onCloseRef.current() }
-    openModals.push(entry)
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && openModals.at(-1) === entry) {
-        entry.close()
-      }
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      openModals.splice(openModals.indexOf(entry), 1)
-      document.removeEventListener('keydown', onKeyDown)
-    }
-  }, [])
+  const root = useRef<HTMLDivElement>(null)
+  const titleRef = useRef<HTMLDivElement>(null)
+  useFocusLayer(root, onClose, {
+    initialFocus: () =>
+      root.current?.querySelector<HTMLElement>('[data-initial-focus]') ?? titleRef.current,
+  })
 
   return createPortal(
     <div
@@ -54,13 +44,15 @@ export const Modal = ({
       onMouseDown={(event) => event.target === event.currentTarget && onClose()}
     >
       <div
+        ref={root}
+        tabIndex={-1}
         className={clsx(styles.content, className)}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
       >
         <div className={styles.header}>
-          <div id={titleId} className={styles.title}>
+          <div ref={titleRef} tabIndex={-1} id={titleId} className={styles.title}>
             {title}
           </div>
           {closable ? (

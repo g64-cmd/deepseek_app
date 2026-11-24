@@ -3,7 +3,7 @@
   display: flex;
   align-items: center;
   box-sizing: border-box;
-  height: 40px;
+  min-height: 40px;
   padding: 9px 6px 9px 10px;
   border-radius: 12px;
   font-size: 14px;
@@ -31,6 +31,14 @@
 }
 
 .title {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  min-height: 28px;
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -40,9 +48,21 @@
 }
 
 .action {
-  display: none;
+  display: flex;
+  opacity: 0;
   flex-shrink: 0;
   margin-left: 4px;
+}
+
+.item:hover .action,
+.item:focus-within .action,
+.item.active .action {
+  opacity: 1;
+}
+
+.title:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 2px;
 }
 
 .renameInput {
@@ -62,12 +82,13 @@
 @media (hover: none) {
   .action {
     display: flex;
+    opacity: 1;
   }
 }
 
 @media not all and (min-width: 768px) {
   .item {
-    height: 44px;
+    min-height: 44px;
     padding: 11px 6px 11px 12px;
     border-radius: 16px;
     font-size: 16px;
