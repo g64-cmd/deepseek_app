@@ -1,6 +1,31 @@
 import type { zh } from './zh.js'
 
 export const en = {
+  historySearch: 'Search history',
+  historyClose: 'Close history search',
+  historyQuery: 'Search terms',
+  historyScope: 'Scope',
+  historyTitles: 'Conversation titles',
+  historyBody: 'Message text',
+  historyClear: 'Clear',
+  historyBodyHint:
+    'Search questions and finished response text in every branch. Thinking, tool records and attachments are excluded. One result per message.',
+  historyEnterQuery: 'Enter a term to search',
+  historyTitleCount: '{count} conversation titles found',
+  historyBodyCount: '{count} messages found',
+  historyScanning: 'Searching {scanned}/{total} conversations; {count} messages found',
+  historyEmpty: 'No matching results',
+  historyOtherBranch: 'Other branch',
+  historyLimit: 'Showing the first {count} messages. Narrow your search.',
+  historySkipped: '{count} conversations no longer exist. Retry to refresh.',
+  historyBusy:
+    'This conversation is generating or history is being updated. Stop generation or try again later.',
+  historyMissing: 'This message was deleted or replaced. Refresh the search results.',
+  historyFailed: 'Could not read history. Retry.',
+  historyImporting: 'History is being updated. Please wait.',
+  historyCancelled: 'Search cancelled. You can retry.',
+  historyLocated: 'Located the matching message',
+  historyLocatedPending: 'Located the message; some rich content is still loading',
   chatInputLabel: 'Message',
   userMessageLabel: 'You',
   assistantMessageLabel: 'Assistant',

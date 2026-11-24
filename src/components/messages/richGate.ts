@@ -27,6 +27,8 @@ export type RichGateController = {
 type RichGateRoot = { controller: RichGateController | null }
 
 export const RichGateContext = createContext<RichGateRoot | null>(null)
+/** 仅检索目标消息绕过视口门控，其他屏外消息保持延后增强。 */
+export const RichSearchTargetContext = createContext(false)
 
 /** 预取范围：滚动层上下各约一屏，先取一屏起步，按测量再调整 */
 const ROOT_MARGIN = '100% 0px 100% 0px'
@@ -100,6 +102,7 @@ export const useRichGateRoot = (
  */
 export const useRichGate = (gated: boolean) => {
   const root = useContext(RichGateContext)
+  const searchTarget = useContext(RichSearchTargetContext)
   const controller = root?.controller ?? null
   const [entered, setEntered] = useState(false)
   const elementRef = useRef<HTMLElement | null>(null)
@@ -108,7 +111,10 @@ export const useRichGate = (gated: boolean) => {
   if (!gated) {
     eagerRef.current = true
   }
-  const active = eagerRef.current || entered || root === null
+  const active = searchTarget || eagerRef.current || entered || root === null
+  if (searchTarget) {
+    eagerRef.current = true
+  }
   useEffect(() => {
     if (!gated || entered) {
       return

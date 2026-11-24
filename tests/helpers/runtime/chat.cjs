@@ -12,10 +12,15 @@ const runtime = {
   saves: [],
   saveAttempts: [],
   manualRenames: false,
+  deferLoads: false,
+  loads: [],
   renames: [],
 }
 exports.runtime = runtime
-exports.loadSession = async (id) => structuredClone(sessions.get(id))
+exports.loadSession = async (id) =>
+  runtime.deferLoads
+    ? new Promise((resolve, reject) => runtime.loads.push({ id, resolve, reject }))
+    : structuredClone(sessions.get(id))
 exports.loadSessionSummaries = async () =>
   [...sessions.values()].map(({ id, title, createdAt, updatedAt }) => ({
     id,

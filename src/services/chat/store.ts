@@ -24,7 +24,13 @@ import { supportsVision } from '../models.js'
 import { bumpUsageRevision } from '../usage.js'
 import { useSettings } from '../settings.js'
 import { showToast } from '../../components/base/toastState.js'
-import { appendBranch, getVisibleMessages, normalizeSession, selectVersion } from './branches.js'
+import {
+  appendBranch,
+  getVisibleMessages,
+  normalizeSession,
+  selectVersion,
+  selectMessagePath,
+} from './branches.js'
 import * as db from './db.js'
 import {
   clearAllDrafts,
@@ -91,6 +97,15 @@ type ChatState = {
   sessionSaveErrors: Record<string, boolean>
   /** null 表示新对话（欢迎页） */
   activeId: string | null
+  /** 一次性的检索定位请求；不持久化、不改变对话正文。 */
+  messageTarget: {
+    sessionId: string
+    messageId: string
+    token: symbol
+    signal?: AbortSignal
+  } | null
+  /** 仅详情加载恢复了中断回答时失效检索，不随流式 token 增长。 */
+  historySearchRevision: number
   /** 正在生成回复的会话 */
   streaming: Record<string, AbortController>
 }
@@ -104,6 +119,8 @@ export const useChatStore = create<ChatState>(() => ({
   sessionLoadErrors: {},
   sessionSaveErrors: {},
   activeId: null,
+  messageTarget: null,
+  historySearchRevision: 0,
   streaming: {},
 }))
 
@@ -143,6 +160,7 @@ const renameTasks = new Set<Promise<boolean>>()
 const streamFlushes = new Map<string, () => void>()
 let accessSequence = 0
 let historyEpoch = 0
+let navigationSequence = 0
 let initTask: Promise<void> | undefined
 const sessionLoads = new Map<string, { promise: Promise<void> }>()
 
@@ -374,6 +392,13 @@ const settleInterrupted = (session: Session): Session => {
   }
 }
 
+/** 搜索沿用普通加载的中断恢复语义；只返回单个快照，不写库或灌入详情缓存。 */
+export const loadSessionForSearch = async (id: string): Promise<Session | undefined> => {
+  const stored = getSession(id) ?? (await db.loadSession(id))
+  const session = getSession(id) ?? stored
+  return session && !getStreamController(id) ? settleInterrupted(session) : session
+}
+
 export const initChat = (): Promise<void> => {
   if (get().ready) {
     return Promise.resolve()
@@ -429,11 +454,15 @@ const ensureSessionLoaded = (id: string): Promise<void> => {
       if (!stored) {
         throw new Error(`Session ${id} is missing from local storage`)
       }
-      const settled = settleInterrupted(normalizeSession(stored))
+      const normalized = normalizeSession(stored)
+      const settled = settleInterrupted(normalized)
       // 读取期间可能已在列表重命名，保留最新元数据，不能让旧读取覆盖它。
       const session = sameSummary(settled, summary) ? settled : { ...settled, ...summary }
       touchSession(id)
-      set((state) => ({ sessionCache: { ...state.sessionCache, [id]: session } }))
+      set((state) => ({
+        sessionCache: { ...state.sessionCache, [id]: session },
+        historySearchRevision: state.historySearchRevision + (settled !== normalized ? 1 : 0),
+      }))
       if (session !== stored) {
         persist(id)
       }
@@ -483,6 +512,8 @@ export const replaceHistory = async <T>(
     throw new Error('History replacement is already in progress')
   }
   set({ importingHistory: true })
+  navigationSequence++
+  set({ messageTarget: null })
   try {
     for (const controller of Object.values(get().streaming)) {
       controller.abort()
@@ -537,18 +568,96 @@ export const replaceHistory = async <T>(
 
 export const newChat = () => {
   if (!get().importingHistory) {
-    set({ activeId: null })
+    navigationSequence++
+    set({ activeId: null, messageTarget: null })
     trimSessionCache()
   }
 }
 
 export const selectSession = (id: string) => {
   if (!get().importingHistory && get().sessions.some((session) => session.id === id)) {
+    navigationSequence++
     touchSession(id)
-    set({ activeId: id })
+    set({ activeId: id, messageTarget: null })
     void ensureSessionLoaded(id)
     trimSessionCache()
   }
+}
+
+/** 取消/消费一次定位，旧完成回调不能清除后来建立的目标。 */
+export const clearMessageTarget = (token?: symbol) => {
+  const target = get().messageTarget
+  if (target && (token === undefined || target.token === token)) {
+    set({ messageTarget: null })
+  }
+}
+
+/** 打开正文命中前重新读取并验证；异步旧结果不能覆盖后来的选择、删除或导入。 */
+export const openHistoryHit = async (
+  sessionId: string,
+  messageId: string,
+  signal?: AbortSignal
+): Promise<'ok' | 'busy' | 'missing' | 'failed' | 'cancelled'> => {
+  if (signal?.aborted) {
+    return 'cancelled'
+  }
+  clearMessageTarget()
+  if (get().importingHistory || deletingSessions.has(sessionId)) {
+    return 'busy'
+  }
+  if (getStreamController(sessionId)) {
+    return 'busy'
+  }
+  const sequence = ++navigationSequence
+  const epoch = historyEpoch
+  let stored: Session | undefined
+  try {
+    stored = getSession(sessionId) ?? (await db.loadSession(sessionId))
+  } catch (error) {
+    if (signal?.aborted || sequence !== navigationSequence || epoch !== historyEpoch) {
+      return 'cancelled'
+    }
+    db.reportStorageError('open history search result')(error)
+    return 'failed'
+  }
+  if (
+    signal?.aborted ||
+    sequence !== navigationSequence ||
+    epoch !== historyEpoch ||
+    get().importingHistory
+  ) {
+    return 'cancelled'
+  }
+  if (getStreamController(sessionId) || deletingSessions.has(sessionId)) {
+    return 'busy'
+  }
+  const summary = get().sessions.find((item) => item.id === sessionId)
+  // 优先使用读取期间产生的新内存版本，不能把旧详情覆盖到新消息上。
+  const current = getSession(sessionId) ?? stored
+  if (!summary || !current) {
+    return 'missing'
+  }
+  const normalized = normalizeSession(current)
+  const settled = settleInterrupted(normalized)
+  const session = selectMessagePath(settled, messageId)
+  if (!session) {
+    return 'missing'
+  }
+  touchSession(sessionId)
+  set((state) => ({
+    activeId: sessionId,
+    sessionCache: {
+      ...state.sessionCache,
+      [sessionId]: { ...session, ...toSessionSummary(summary) },
+    },
+    messageTarget: { sessionId, messageId, token: Symbol(), signal },
+    historySearchRevision: state.historySearchRevision + (settled !== normalized ? 1 : 0),
+  }))
+  if (session !== current) {
+    persist(sessionId)
+  }
+  trimSessionCache()
+  return 'ok'
 }
 
 /** 重命名；返回是否成功——已加载分支的保存失败由保存失败红条体系提示，这里恒成功 */
@@ -880,6 +989,8 @@ export const selectMessageVersion = (sessionId: string, messageId: string) => {
   if (getStreamController(sessionId)) {
     return
   }
+  navigationSequence++
+  set({ messageTarget: null })
   updateSession(sessionId, (session) => selectVersion(session, messageId))
   persist(sessionId)
 }
@@ -1436,7 +1547,11 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
   if (!getSession(sessionId)?.title) {
     titleRequests.add(controller)
   }
-  set((state) => ({ streaming: { ...state.streaming, [sessionId]: controller } }))
+  navigationSequence++
+  set((state) => ({
+    messageTarget: null,
+    streaming: { ...state.streaming, [sessionId]: controller },
+  }))
   const omitted = new Set([
     ...(initial.omittedFileIds ?? []),
     ...(request.omitted ?? []),

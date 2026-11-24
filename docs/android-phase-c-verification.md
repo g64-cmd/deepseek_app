@@ -250,3 +250,90 @@ C4 已完成代码与自动回归，基线为 `develop` / `46a223f` 加本次工
 本轮浏览器仍为 Windows Headless Chrome **154.0.8037.98**，真实组件/React/DOM/CSS、独立临时配置、离线数据；外部 HTTPS 被阻断，无真实 Key 或付费请求。证据为 `tmp/c2-r-browser.log`、`tmp/c2-r-browser/observations.json` 和其中的 `drawer-open.png`、`image-100.png`、`image-200.png`；独立复验在 `tmp/c2-r-independent/`，常规回归日志为 `tmp/c2-r-tests.log`。
 
 常规 Android debug 构建通过（**17 秒、184 个任务**），输出应用 ID `com.g64_cmd.whalechat`，APK SHA-256 `9d7da3a1e3305755da6973ef147efd65e9a59fa779802f452d5b7dbbe87e682e`，日志 `tmp/c2-r-android-build.log`。本次没有启动 Android 模拟器，也未重跑 C1 性能；第 12 节模拟器报告属于其旧构建。TalkBack、目标真机与既有组合场景待验范围继续保留，不能把本轮浏览器修复当作设备验收全部完成。
+
+
+## 14. C3 标题、正文检索与任意分支定位（2026-11-24）
+
+本批承接已推送的 `develop` / `973154e`，实现 C3a/C3b，改动留在本地待 review。前面各节的构建与设备结果保留其历史身份。完整原始样本、环境、源码/证据 SHA-256 见 [C3 验证摘要](perf/c3-2026-11-24-history-search.json)。
+
+### 实现与边界
+
+- **标题**：侧栏独立“搜索历史”入口，直接过滤摘要，支持中文子串、英文大小写不敏感、空结果、清空和关闭后恢复分组列表；不读取正文。移动端选中标题或正文命中后关闭抽屉，重开可保留检索词；关闭检索则清空并返回列表。搜索使用共享返回栈，先关闭更高层弹窗，再关闭检索、抽屉。
+- **正文**：用户输入与已结束助手 text 块，覆盖全部分支。思考、工具原始块、附件内容、服务端模板和安全拒绝隐藏内容不参与；生成中的助手正文待结束后重扫。每条消息一个结果，携带会话/消息 ID、摘要和分支标记；选择路径后按当前路径刷新标记。最多展示 200 条，继续扫描统计总数，并提示缩小范围。
+- **扫描**：160ms 防抖，每次只读取一个详情，不灌入会话缓存；优先使用尚未保存的内存版本。8ms 时间片、每 16 个会话主动让出执行权，长消息按 8,192 字符分块匹配并保留重叠区。IndexedDB 读取在自己的事务中完成，让出执行权在事务外。首批与后续进度至少相隔 250ms（结束通知除外）；不播报 token 或整段正文。支持取消、改词、清空、关闭和读失败重试；空结果与读取失败明确区分。
+- **一致性**：删除/重命名/保存、生成开始结束及导入替换使相应搜索重启；逐 token 不重扫。旧扫描、旧打开请求不能在新操作后发布或改变活动会话。打开时重新验证数据，优先取读取期间更新的缓存版本；结果已不存在时提示刷新，生成中的目标要求先停止。
+- **路径与定位**：`selectMessagePath` 验证完整祖先链（拒绝缺失节点和环），一次选择所有祖先，保留命中后的原有选择并持久化；线性旧数据和替代根也可打开。只强制增强目标消息，等待该消息的异步富内容就绪并跨绘制机会后定位与聚焦，不等全部历史增强。最多等 10 秒，随后定位可读基础内容并播报仍有富内容加载；已定位请求不在断点切换时重放。输入检索词时保持输入焦点。
+- **移动布局**：coarse pointer 控件至少 44px；搜索说明变长时整块可滚动，结果区保留高度，选择器可换行。320px/200% 中英文用例会滚动到结果并派发真实指针点击验证打开，避免仅检查元素存在却没有可操作区域。
+
+### 自动回归与桌面证据
+
+`pnpm test` **124/124**（新增 9 项 C3 逻辑/竞争回归）；`pnpm test:c3` **10/10**；`pnpm test:c2` **17/17**；类型与 lint（0 warnings / 0 errors）通过。
+
+C3 浏览器为 Headless Chrome **154.0.8037.98**，真实 React/DOM/CSS/IndexedDB，独立临时配置与逐例重载，主及异步 CSS 均 HTTP 200，外部 HTTPS 阻断；没有 Key 或付费请求。标题用例确认详情读取为 0。正文覆盖深层未选分支、重复词每消息仅一条、富内容等待/滚动/焦点、移动返回/重开、快速改词/取消/语言切换、生成/停止、删除/导入/保存与读取失败恢复。独立读取失败仅在 IndexedDB get 边界注入异常。
+
+深层富内容定位：滚动量 **14,656px**，目标顶距 **16px**，焦点位于命中消息，其他 **28** 个屏外富内容仍门控。固定 C0 列表夹具为 **1,000 会话 / 2,000 消息 / 436,000 UTF-16 单元 / 826,000 UTF-8 字节正文**；桌面一次直接扫描首批 **22.2ms**、完成 **160.5ms**，实际读取 1,000 个详情，结束后详情缓存仍为 0。标题纯过滤的 10 次样本最大 **0.2ms**。这些是桌面诊断样本；不与下表含防抖/界面提交的 Android 时间混用。
+
+证据：`tmp/c3-browser.log`、`tmp/c3-browser/observations.json` 与 `deep-anchor.png`、`mobile-anchor.png`、`mobile-search-200.png`，截图已检查。常规与 C2 日志为 `tmp/c3-tests.log`、`tmp/c3-c2-browser.log`。C2 引用测试原先在按键后固定 40ms 就断言，新代码构建下出现异步平台模块未完成的偶发失败；现等待真实 windowOpen 事件（最多 2 秒），仍断言仅一次且 URL 正确，最终 17 项通过。
+
+### Android 千会话与返回验证
+
+使用 production Web + 独立 `com.g64_cmd.whalechat.c0` debug 包，Pixel_8 AVD、Android 14 / API 34、WebView **113.0.5672.136**，视口 **412×840 CSS px**、DPR **2.625**。已核对安装包 SHA-256 与本地 APK 相同：`905fa54dbabcd7cc3a792c765fab472e5d5bfe2b1830ba0225c147fb0f5c543d`。驱动 [run-history-search-android.mjs](../scripts/perf/run-history-search-android.mjs) 与复现步骤见 [C0 工具说明](../scripts/perf/README.md)。
+
+5 次冷样本每次 force-stop/启动应用进程，10 次热样本同进程重新改词；不清系统/磁盘缓存。标题时间为受控输入到过滤后 DOM 提交并跨两次 rAF；正文首批为结果 DOM 提交代理，完成另跨两次 rAF，**正文均含 160ms 防抖**。不是屏幕逐帧直接测量。长任务只覆盖正文查询窗口。
+
+| 指标 | 冷 5 次：中位 / 最大 | 热 10 次：中位 / 最大 | 本夹具工程目标 |
+| --- | --- | --- | --- |
+| 标题结果 | 28.3 / 38.3ms | 26.55 / 36.6ms | <100ms |
+| 正文首批 | 200 / 215.4ms | 195 / 205.2ms | <1s |
+| 正文完成 | 2258.2 / 2627.6ms | 2254.25 / 2311.9ms | <5s |
+
+**15 个样本全部满足目标**，每轮总命中 2,000 条、展示 200 条；查询窗口未观察到 longtask。完整原始值均保留，样本不足 20 次不报告 P95。该结果只涵盖本次 826,000 字节合成正文，不代表千个长会话或整应用无冻结。
+
+规模样本后另外加入 C0 的深层未选分支（不混入千会话测量）。实际选择了完整六节点祖先路径，目标代码/公式/Mermaid 均就绪、没有 pending 富内容，移动抽屉关闭、DOM 焦点移至命中。真实 Android 返回键第一次关闭检索且保留抽屉，第二次关闭抽屉并恢复入口；最终截图 `tmp/c3-android-final/branch-anchor.png` 已检查。完整报告和日志为 `tmp/c3-android-final/report.json`、`tmp/c3-android-final.log`。
+
+探索脚本的失败记录保留在 `tmp/c3-android-attempt1*` 至 `attempt3*`：分别涉及初始语言、未关闭的设置遮挡和误拦截 https://localhost 异步资源；不用于本节验收。最终驱动通过界面固定语言、关闭初始设置并检查输入未 inert，允许本地资源，重新采集完整 5 冷/10 热与分支/返回闭环，使用上述最终报告。
+
+### 构建与待验
+
+生产 Web/Capacitor 同步、C0 与常规 Android debug 均通过；常规构建 **24 秒、184 个任务**，默认输出已恢复日常应用 ID `com.g64_cmd.whalechat`，APK SHA-256 `843f0965bbac3ba0ceb23d648249d85b0a233e31c2772ea2361d90d43c80e0e8`。日志为 `tmp/c3-web-build.log`、`tmp/c3-c0-build.log`、`tmp/c3-android-build.log`。独立浏览器配置自动清理，本任务启动的只读模拟器已关闭，未操作日常包数据。
+
+**待验**：目标真机与现代 WebView、TalkBack 实际阅读/焦点/播报、Android C3 界面的系统字体/显示缩放/横屏分屏组合、千个长会话与峰值内存，以及 C3 合入后的 C1 混合渲染/锚点组合矩阵。单条 IndexedDB 克隆仍不可中途打断，但取消后不会发布迟到结果。本轮未调用真实 API，不据此关闭 C4 收费与设备链路；不标记阶段 C 整体验收通过。
+
+
+## 15. C3 review 两项 P2 修复与验证（2026-11-24）
+
+依据 `tmp/develop-review-phase-c3-973154e-worktree.md`，修复 C3-R01/R02；仍为 `develop` / `973154e` 之后的本地改动，未提交或推送。第 14 节及其 JSON 保留首批构建和测试的历史身份，原覆盖不包含本次两个边界，不能用原通过数证明这两点已通过。当前摘要见 [C3 review 修复记录](perf/c3-2026-11-24-review-fixes.json)。
+
+| 编号 | 改进及行为回归 |
+| --- | --- |
+| C3-R01 | 目标携带 AbortSignal 和所有权 token。定位 rAF 每次执行及滚动/聚焦前复核身份；改词、切换范围、取消、关闭或移动重开会清除旧目标，迟到加载不再抢焦点或滚动。完成后按 token 消费目标，旧回调不能清除新目标；清除本身不触发底部跟随，定位播报保留。移动抽屉自动卸载只取消未提交 DB 请求，交给列表的目标继续完成，避免正常选择被误取消；等待期间提供取消入口。 |
+| C3-R02 | `loadSessionForSearch` 与普通加载共用 `settleInterrupted`：没有实际生成 controller 的 pending/streaming 旧记录按 stopped 解释，有实际 controller 的回答仍排除。搜索只返回单个恢复快照，不改原记录、不入详情缓存、不触发全量保存。详情加载或命中打开实际恢复状态时递增内存检索修订号，触发有界刷新；重开已恢复缓存不重复失效，逐 token 不失效。 |
+
+通过：`pnpm test` **127/127**，`pnpm test:c3` **17/17**，`pnpm test:c2` **17/17**；类型、lint（0 warnings / 0 errors）、生产 Web/Capacitor 同步、常规 Android debug 构建。新增 3 项 Node 和 7 项真实浏览器必要回归。
+
+C3 用例将本地异步 JS 分块延迟 1 秒，分别实际操作改词、切换范围、取消、关闭。四例等待富内容完成后 scrollTop 均 **0→0**，不移走后来的焦点。另覆盖移动重开、自动关闭抽屉后正常定位、消费后布局切换不再次调用目标 focus，以及 pending/streaming 遗留正文的冷搜索、直接打开/普通恢复、修订号只增加一次。逐 token 用例同时观察搜索阶段变化和读取数，避免仅凭缓存下零 DB 读取就宣称未重扫。布局切换的普通文字重排/滚动锚定继续属于既有 C1 组合范围，此处仅验证定位请求不重放。
+
+原 review 独立用例复制到 `tmp/c3-r-independent/` 后 **2/2 通过**，只调整编译入口路径及换行格式，断言与夹具逻辑原样保留；原失败材料未覆盖。延迟加载期间实际输入 continued 后，query 为 needlecontinued，等待时仍有 **4** 个 pending 富内容；最终焦点仍为 **search**，scrollTop 为 **0**。中断回答首次冷搜索即命中 **1** 条，打开恢复为 stopped 后仍命中 **1** 条且正文可见。
+
+证据：`tmp/c3-r-tests.log`、`tmp/c3-r-browser.log`、`tmp/c3-r-browser/observations.json` 及截图、`tmp/c3-r-c2-browser.log`，独立日志/数据为 `tmp/c3-r-independent/results.log` 与 `browser/observations.json`。已检查独立改词截图，输入框保持焦点、消息区未迟到跳转。真实 React/DOM/CSS、独立浏览器配置；主及异步 CSS 均 HTTP 200，样式与布局守卫有效；无真实 Key 或收费调用。
+
+常规 Android 构建 **16 秒、184 个任务**；应用 ID `com.g64_cmd.whalechat`，APK SHA-256 `291a57cfae97e584f7159beedf97d3709b9e7a6ca46d6e296c2aac1fcab26efa`，输出 `android/app/build/outputs/apk/debug/app-debug.apk`。日志为 `tmp/c3-r-web-build.log`、`tmp/c3-r-android-build.log`。
+
+**证据边界**：本批未启动模拟器/真机，未重跑 Android 千会话性能、C1 搁置优化或 C4 收费链路。第 14 节的 5 冷/10 热数据属于旧 APK，不冒充本次设备结果。真机、现代 WebView、TalkBack、系统字体/显示缩放/横屏分屏、千个长会话与峰值内存及既有组合场景继续待验；不标记阶段 C 整体验收通过。
+
+
+## 16. C3-R01 读库等待阶段 Cancel 补修（2026-11-24）
+
+依据 `tmp/develop-review-phase-c3-r2-2026-11-24.md` 和用户补充，修复 R01 剩余 P2：第 15 节的取消回归覆盖的是 messageTarget 已建立后的富内容等待，尚不能证明未提交 DB 打开请求也会取消。R02 保持已修复，不重新扩大范围。当前完整摘要见 [读库取消补修记录](perf/c3-2026-11-24-cancel-db-fix.json)。仍为本地待复审改动，未提交或推送。
+
+`HistorySearch` 抽取统一 `cancelNavigation`，用于 Cancel、关闭及检索词/范围改变：abort 导航 controller、释放引用、递增本地 request token、结束 opening，再清除已提交目标；Cancel 继续中止扫描并显示 cancelled。取消入口额外覆盖 opening 状态，即使扫描先完成也不会失去取消待打开请求的入口。正常移动抽屉自动卸载仍使用原有的未提交请求判断，保留已交给消息列表的目标，不用主动取消替代自动交接。
+
+新增 5 项真实浏览器必要回归：首批结果已出现、全扫描仍在进行 → 点击结果 → 挂起该原生 IndexedDB 请求的 success 通知 → 分别改词、切换范围、Cancel、关闭 → 手动释放读取。第五项让全扫描先完成、导航读取继续挂起，确认仍有 Cancel。既有富内容阶段的取消、移动交接、目标消费及 R02 回归继续保留。
+
+先运行新增精确 Cancel 用例，修复前实际复现 activeId 从 null 变为 c0-v1-list-0000，焦点从 BODY 变为旧命中 c0-v1-list-0000-u0（`tmp/c3-r3-before-cancel.log`）。修复后，四条路径与“扫描先完成”的 Cancel 均通过：释放真实挂起读取后，activeId 仍为 null，messageTarget 仍为 null，焦点/消息滚动层状态与释放前相同；取消后结果按钮恢复可用，phase 保持 cancelled。不是通过提前放弃读取来代替检查迟到回调。
+
+复审原来的四项对照复制到 `tmp/c3-r3-independent/` 独立复验 **4/4 通过**；只调整编译入口路径和换行格式，夹具/断言逻辑不变，原失败材料保留。Cancel 对照在释放前为 searching、结果 disabled、activeId 为 null；延迟读回后 activeId 仍为 null、phase 为 cancelled。
+
+验证：`pnpm test` **127/127**，`pnpm test:c3` **22/22**，`pnpm test:c2` **17/17**，类型、lint（0 warnings / 0 errors）、production Web/Capacitor 同步、常规 Android debug 均通过。独立浏览器配置、真实 React/DOM/CSS/IndexedDB、主/异步 CSS HTTP 200；无真实 Key 或付费请求。日志为 `tmp/c3-r3-tests.log`、`tmp/c3-r3-browser.log`、`tmp/c3-r3-c2-browser.log`；详细状态在 `tmp/c3-r3-browser/observations.json` 和 `tmp/c3-r3-independent/browser/observations.json`，独立日志为 `tmp/c3-r3-independent/results.log`。
+
+常规 Android 构建 **22 秒、184 个任务**，应用 ID `com.g64_cmd.whalechat`，APK SHA-256 `a9eaf3ecbcee03c1b040b681244283acae362b897fbbafa9aa1db20e3522963d`，输出 `android/app/build/outputs/apk/debug/app-debug.apk`；日志 `tmp/c3-r3-web-build.log`、`tmp/c3-r3-android-build.log`。第 14、15 节的 APK/证据继续保留其历史身份。本批未新增模拟器/真机、TalkBack、C1 或 C4 验收，不据构建与浏览器回归宣称阶段 C 整体通过。

@@ -1,0 +1,506 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-24",
+  "timezone": "Asia/Shanghai",
+  "baseCommit": "973154eecc46794b0f30b42d0c5530169999e124",
+  "state": "Uncommitted C3 implementation; human review pending",
+  "checks": {
+    "node": {
+      "passed": 124,
+      "total": 124
+    },
+    "c3Browser": {
+      "passed": 10,
+      "total": 10,
+      "product": "Chrome/154.0.8037.98",
+      "offline": true,
+      "realReactDomCssIndexedDB": true
+    },
+    "c2Browser": {
+      "passed": 17,
+      "total": 17
+    },
+    "type": "passed",
+    "lint": "0 warnings / 0 errors",
+    "webProductionBuild": "passed",
+    "normalAndroidDebugBuild": "passed",
+    "c0AndroidDebugBuild": "passed"
+  },
+  "browser": {
+    "cssResponses": [
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/6345.app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/6345.app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/6345.app.css",
+        "status": 200
+      }
+    ],
+    "observations": [
+      {
+        "type": "deep-anchor",
+        "top": 16,
+        "scrollTop": 14656,
+        "offscreenGated": 28,
+        "focused": "target-answer"
+      },
+      {
+        "type": "scale",
+        "titles": [
+          0.20000000298023224,
+          0,
+          0.09999999403953552,
+          0.10000000894069672,
+          0,
+          0,
+          0.09999999403953552,
+          0,
+          0,
+          0
+        ],
+        "elapsedMs": 160.5,
+        "firstMs": 22.200000002980232,
+        "reports": [
+          {
+            "ms": 22.200000002980232,
+            "scanned": 16,
+            "total": 32
+          },
+          {
+            "ms": 160.40000000596046,
+            "scanned": 1000,
+            "total": 2000
+          }
+        ],
+        "reads": 1000,
+        "sessions": 1000,
+        "messages": 2000,
+        "textUnits": 436000,
+        "textBytes": 826000,
+        "resultTotal": 2000,
+        "shown": 200,
+        "cacheSize": 0
+      },
+      {
+        "type": "mobile-200",
+        "width": 247,
+        "scrollWidth": 247,
+        "controls": [
+          {
+            "name": "关闭历史检索",
+            "x": 185,
+            "right": 259,
+            "height": 49
+          },
+          {
+            "name": "",
+            "x": 12,
+            "right": 259,
+            "height": 53
+          },
+          {
+            "name": "对话标题消息正文",
+            "x": 74,
+            "right": 208,
+            "height": 44
+          },
+          {
+            "name": "清空",
+            "x": 12,
+            "right": 86,
+            "height": 49
+          },
+          {
+            "name": "中文 Deep Branch你 · 其他",
+            "x": 12,
+            "right": 259,
+            "height": 190
+          },
+          {
+            "name": "中文 Deep Branch助手 · 其",
+            "x": 12,
+            "right": 259,
+            "height": 400
+          }
+        ]
+      }
+    ]
+  },
+  "android": {
+    "samples": [
+      {
+        "kind": "cold",
+        "n": 1,
+        "titleMs": 32.800000000046566,
+        "firstMs": 200,
+        "completeMs": 2258.1999999999534,
+        "shown": 200,
+        "status": "找到 2000 条消息",
+        "maxLongtask": 0,
+        "width": 412,
+        "height": 840
+      },
+      {
+        "kind": "cold",
+        "n": 2,
+        "titleMs": 28.299999999813735,
+        "firstMs": 195.69999999995343,
+        "completeMs": 2275.5,
+        "shown": 200,
+        "status": "找到 2000 条消息",
+        "maxLongtask": 0,
+        "width": 412,
+        "height": 840
+      },
+      {
+        "kind": "cold",
+        "n": 3,
+        "titleMs": 25.199999999953434,
+        "firstMs": 197,
+        "completeMs": 2177.6999999999534,
+        "shown": 200,
+        "status": "找到 2000 条消息",
+        "maxLongtask": 0,
+        "width": 412,
+        "height": 840
+      },
+      {
+        "kind": "cold",
+        "n": 4,
+        "titleMs": 24.699999999953434,
+        "firstMs": 204.19999999995343,
+        "completeMs": 2258,
+        "shown": 200,
+        "status": "找到 2000 条消息",
+        "maxLongtask": 0,
+        "width": 412,
+        "height": 840
+      },
+      {
+        "kind": "cold",
+        "n": 5,
+        "titleMs": 38.300000000046566,
+        "firstMs": 215.39999999990687,
+        "completeMs": 2627.600000000093,
+        "shown": 200,
+        "status": "找到 2000 条消息",
+        "maxLongtask": 0,
+        "width": 412,
+        "height": 840
+      },
+      {
+        "kind": "warm",
+        "n": 1,
+        "titleMs": 31.100000000093132,
+        "firstMs": 197.69999999995343,
+        "completeMs": 2274.0999999998603,
+        "shown": 200,
+        "status": "找到 2000 条消息",
+        "maxLongtask": 0,
+        "width": 412,
+        "height": 840
+      },
+      {
+        "kind": "warm",
+        "n": 2,
+        "titleMs": 21.0999999998603,
+        "firstMs": 194.89999999990687,
+        "completeMs": 2244.6999999999534,
+        "shown": 200,
+        "status": "找到 2000 条消息",
+        "maxLongtask": 0,
+        "width": 412,
+        "height": 840
+      },
+      {
+        "kind": "warm",
+        "n": 3,
+        "titleMs": 30.600000000093132,
+        "firstMs": 201.39999999990687,
+        "completeMs": 2261.899999999907,
+        "shown": 200,
+        "status": "找到 2000 条消息",
+        "maxLongtask": 0,
+        "width": 412,
+        "height": 840
+      },
+      {
+        "kind": "warm",
+        "n": 4,
+        "titleMs": 36.60000000009313,
+        "firstMs": 193,
+        "completeMs": 2262.4000000001397,
+        "shown": 200,
+        "status": "找到 2000 条消息",
+        "maxLongtask": 0,
+        "width": 412,
+        "height": 840
+      },
+      {
+        "kind": "warm",
+        "n": 5,
+        "titleMs": 23.4000000001397,
+        "firstMs": 189.9000000001397,
+        "completeMs": 2162.7000000001863,
+        "shown": 200,
+        "status": "找到 2000 条消息",
+        "maxLongtask": 0,
+        "width": 412,
+        "height": 840
+      },
+      {
+        "kind": "warm",
+        "n": 6,
+        "titleMs": 25,
+        "firstMs": 194.5999999998603,
+        "completeMs": 2311.899999999907,
+        "shown": 200,
+        "status": "找到 2000 条消息",
+        "maxLongtask": 0,
+        "width": 412,
+        "height": 840
+      },
+      {
+        "kind": "warm",
+        "n": 7,
+        "titleMs": 29.300000000046566,
+        "firstMs": 195.10000000009313,
+        "completeMs": 2295.9000000001397,
+        "shown": 200,
+        "status": "找到 2000 条消息",
+        "maxLongtask": 0,
+        "width": 412,
+        "height": 840
+      },
+      {
+        "kind": "warm",
+        "n": 8,
+        "titleMs": 24.899999999906868,
+        "firstMs": 203.79999999981374,
+        "completeMs": 2246.5999999998603,
+        "shown": 200,
+        "status": "找到 2000 条消息",
+        "maxLongtask": 0,
+        "width": 412,
+        "height": 840
+      },
+      {
+        "kind": "warm",
+        "n": 9,
+        "titleMs": 28.100000000093132,
+        "firstMs": 205.19999999995343,
+        "completeMs": 2127.1999999999534,
+        "shown": 200,
+        "status": "找到 2000 条消息",
+        "maxLongtask": 0,
+        "width": 412,
+        "height": 840
+      },
+      {
+        "kind": "warm",
+        "n": 10,
+        "titleMs": 21.5999999998603,
+        "firstMs": 189.30000000004657,
+        "completeMs": 2228.399999999907,
+        "shown": 200,
+        "status": "找到 2000 条消息",
+        "maxLongtask": 0,
+        "width": 412,
+        "height": 840
+      }
+    ],
+    "checks": [
+      "deep off-path branch selected; rich target ready; drawer closed; DOM focus moved to hit",
+      "real Android Back closes search first, then drawer and restores opener"
+    ],
+    "started": "2026-11-24T05:25:57.907Z",
+    "fixture": {
+      "sessions": 1000,
+      "messages": 2000,
+      "jsonSha256": "543abcaa63c2995d0a387173c07a5f388c965e5505ebf495308de3e83525999b",
+      "fixtureSourceSha256": "790b5ac951bf2012ee8686f7d3cfc0715c6d21db02b6cb6b3bd1bfca935ea6e9",
+      "branchSha256": "0e561e85d3997c9ca21a884e0602bc0c29a69a3be3bc69972e9337b1c397254e",
+      "hitId": "c0-v1-alternate-a1",
+      "textUnits": 436000,
+      "textBytes": 826000
+    },
+    "apkSha256": "905fa54dbabcd7cc3a792c765fab472e5d5bfe2b1830ba0225c147fb0f5c543d",
+    "packageId": "com.g64_cmd.whalechat.c0",
+    "environment": {
+      "model": "sdk_gphone64_x86_64",
+      "android": "14",
+      "webview": "Current WebView Update Service state\r\n  Multiprocess enabled: true\r\n  Current WebView package (name, version): (com.google.android.webview, 113.0.5672.136)\r\n  Minimum targetSdkVersion: 33\r\n  Minimum WebView version code: 567263637\r\n  Number of relros started: 1\r\n  Number of relros finished: 1\r\n  WebView package dirty: false\r\n  Any WebView package installed: true\r\n  Preferred WebView package (name, version): (com.google.android.webview, 113.0.5672.136)\r\n  WebView packages:\r\n    Valid package com.google.android.webview (versionName: 113.0.5672.136, versionCode: 567263637, targetSdkVersion: 34) is  installed/enabled for all users\r\n    com.google.android.webview.beta is NOT installed.\r\n    com.google.android.webview.dev is NOT installed.\r\n    com.google.android.webview.canary is NOT installed.\r\n    com.google.android.webview.debug is NOT installed.\r\n    com.android.webview is NOT installed.",
+      "font": "null"
+    },
+    "navigation": {
+      "id": "c0-v1-alternate-a1",
+      "top": 221.5238037109375,
+      "pending": 0,
+      "visibleIds": [
+        "c0-v1-branches-u0",
+        "c0-v1-branches-a0",
+        "c0-v1-alternate-u0",
+        "c0-v1-alternate-a0",
+        "c0-v1-alternate-u1",
+        "c0-v1-alternate-a1"
+      ],
+      "viewport": {
+        "width": 412,
+        "height": 840,
+        "dpr": 2.625
+      }
+    },
+    "backCountThroughSearch": 1,
+    "status": "complete"
+  },
+  "androidSummary": {
+    "cold": {
+      "count": 5,
+      "titleMs": {
+        "median": 28.3,
+        "max": 38.3
+      },
+      "firstMs": {
+        "median": 200,
+        "max": 215.4
+      },
+      "completeMs": {
+        "median": 2258.2,
+        "max": 2627.6
+      },
+      "maxLongtask": {
+        "median": 0,
+        "max": 0
+      }
+    },
+    "warm": {
+      "count": 10,
+      "titleMs": {
+        "median": 26.55,
+        "max": 36.6
+      },
+      "firstMs": {
+        "median": 195.0,
+        "max": 205.2
+      },
+      "completeMs": {
+        "median": 2254.25,
+        "max": 2311.9
+      },
+      "maxLongtask": {
+        "median": 0.0,
+        "max": 0
+      }
+    }
+  },
+  "engineeringBudgets": {
+    "scope": "C0 1000 list sessions, 2000 messages, 826000 UTF-8 text bytes",
+    "titleUiMs": 100,
+    "bodyFirstMs": 1000,
+    "bodyCompleteMs": 5000,
+    "all15SamplesMeetBudgets": true
+  },
+  "normalApk": {
+    "path": "android/app/build/outputs/apk/debug/app-debug.apk",
+    "applicationId": "com.g64_cmd.whalechat",
+    "sha256": "843f0965bbac3ba0ceb23d648249d85b0a233e31c2772ea2361d90d43c80e0e8"
+  },
+  "sourceHashes": {
+    "package.json": "cc7f7f78aa2d5e8bd15bf7aedb67166c73faad59cc758afb23e80c5b24353292",
+    "scripts/perf/README.md": "e5ac148a686341b827e119c85a035a7d28d24a77d671c7de89f600e83df9daaa",
+    "scripts/perf/run-history-search-android.mjs": "7ec7f722edb6656ac9b68262c1308f802f4543be19153b8f0d63540669a73851",
+    "src/components/messages/AssistantMessage.tsx": "12f69ff6a57d81646d68ef5ca13cec002e666edf77cfa4613e40b017bcc9cc42",
+    "src/components/messages/MessageList.tsx": "ed23d425e2b7aa8326ca9a5af8006b908204564886400cf3645441dbe669c938",
+    "src/components/messages/UserMessage.tsx": "524cd7d2058bf536102d3cdf1b6a5d9f5df3ec0d3dffa3fc3d9ac71551686697",
+    "src/components/messages/richGate.ts": "d6e103319100db333103363bce0069ce4d34b1ad29f086556a6022d3dd5fcaab",
+    "src/components/sider/HistorySearch.module.css": "5eaebc1c6dcb960d440c81c249da8f4f7fd08d5b9536f1766694b80e817dc033",
+    "src/components/sider/HistorySearch.tsx": "3a2f1e8d78c3c8ef4506721dfdf433be67338860920e86fb76ae55d55f6312f7",
+    "src/components/sider/Sider.module.css": "533d4848d635e1bd3e3f7f5f73ba689a3dee3d9ea97ccaf8b6d469c33729dd41",
+    "src/components/sider/Sider.tsx": "ef0eadc6c3c37a755f8843783743874ff26ac14be30c97f3ad66c89db21a19da",
+    "src/i18n/en.ts": "0bc4692681d904ea6bfc42ae9e5a0811f69e7efea14c57932d6994016fc7c687",
+    "src/i18n/zh.ts": "38b7c84acdfd6353d6d2dde200d911cb6e7506a13e5af8d8c6e90f254dd2ce91",
+    "src/services/chat/branches.ts": "fa8a864d51cb217d642fd8cb216006297a1a0c156a6bd444522bbe3a39d6e639",
+    "src/services/chat/historySearch.ts": "41bdee6233f3ef5383c7c0d9214a774a809179a4db981eb76f254894698a5d1f",
+    "src/services/chat/store.ts": "bcd80bdf247f4dd9003381beaa05c8a57d374332bc722c33fb3957ba6fe778b5",
+    "tests/README.md": "22d358413198e34e4406fda4a1223e4bb91045761c6f3325feb2bbdcf1213d48",
+    "tests/accessibility-browser.test.mjs": "0e19591731d3d19156ce42fe870025f4b7761cff86fd7a3351bc864b5c5bbe56",
+    "tests/helpers/entries/history-search-browser.tsx": "5ea09fc37a137c5f90398e60e35b6faf568a0f1619b1bf4276c4a373350baff2",
+    "tests/helpers/entries/history-search.ts": "4298f3ace6bdb83f33e47850375620fa2db6aa1f2ceeb2442ce2020a63366f1e",
+    "tests/helpers/runtime/chat.cjs": "97252842c35a3c4c85b4ffe8c0a10b78d8a29c05428b2f816f9697cb813e45e8",
+    "tests/history-search-browser.test.mjs": "051ba3037010c107feb1337d48d31f11c14cd9195da235ae30ec4ebf21c7642a",
+    "tests/history-search.test.mjs": "5998a3d33a25ce86f33376d6196438443fdd94b6025e1b7b267cb5f22527e9f7"
+  },
+  "evidenceHashes": {
+    "tmp/c3-tests.log": "691e9b13627883edd7be78eee3385581c8f379076e1c1d87394c3b78a559d222",
+    "tmp/c3-browser.log": "e1a8f3611a486ac085bf0d17d38c9ef03bfe52804f4e2da45284f6d2d23aff5d",
+    "tmp/c3-browser/observations.json": "ad34c898de2e536a5c993f5388a8e91e359cc365abf051228dd5ecdca2abfc7f",
+    "tmp/c3-browser/deep-anchor.png": "ae0e32b764e85a6206602f44ec301a50362dd63993b55b6c074fe6346152ab2d",
+    "tmp/c3-browser/mobile-anchor.png": "4b4fde541f783a2dd123d6b0bbafec64e02de9be7ad6c7e82492194b854ce0de",
+    "tmp/c3-browser/mobile-search-200.png": "01b85296f1a1643b419b0abe9f2b74d1c47b9d7753bf46e674171c0953f0a264",
+    "tmp/c3-c2-browser.log": "0c27a1e4e365e42653d380269b71c37bd9f3ffc53d9df2d9d0f4bba2c48856a8",
+    "tmp/c3-android-final.log": "551ae3d20f9d8da218c99528bb30096818de2b1f2b77d00a87a5fed4ce99652d",
+    "tmp/c3-android-final/report.json": "576ea15841f1c85bbc2220982803a60d701946c76d476107371e287da6a62444",
+    "tmp/c3-android-final/branch-anchor.png": "12e8ccc790bd35e81f72789ddd5b567f0b08afa11fecc82188cc6f5ebee22598",
+    "tmp/c3-web-build.log": "491c499517eca40d69ba945b39aefd700f3250e673c4e74121a3aeb35808b856",
+    "tmp/c3-c0-build.log": "cd92706e926f53e82221e57831e88fa56af34cdaf061642c376a0cb12d56c668",
+    "tmp/c3-android-build.log": "920b7b1cdfebac1d0ae9995106a384ad37fd6f422244922b916d31d9f497c4c8"
+  },
+  "limitations": [
+    "No target physical device or TalkBack acceptance",
+    "No 1000 long-conversation or peak memory measurements",
+    "No C1 mixed-content performance matrix rerun after C3",
+    "Browser 200 percent means explicit font-size scaling, not Android system font/display/split-screen acceptance",
+    "IndexedDB clones one session per read; an in-flight clone cannot be interrupted, but stale results are discarded",
+    "No real API key or paid request; local history search is offline"
+  ],
+  "androidDriverNote": "Final 15 samples and navigation used identical app bytes. After collection, the driver was made read-only with respect to APK installation: it now requires a preinstalled C0 APK and checks its hash before launching/seeding. Syntax and lint rechecked."
+}

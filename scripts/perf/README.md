@@ -2,6 +2,20 @@
 
 本工具在独立包 `com.g64_cmd.whalechat.c0` 中运行固定合成数据，不配置 Key，不发起聊天/上传请求。C0 仅增加测量标识，不实施按需渲染、虚拟化或数据库迁移。旧 `scripts/perf-seed.js` 保留为阶段 B 历史复现工具，不用于新指标。
 
+## C3 历史检索验证
+
+`run-history-search-android.mjs` 使用 production Web + `-Pc0Perf` debug APK，核对预先安装的独立 C0 包与所选 APK 的 SHA-256；驱动本身不安装 APK，误选常规输出会拒绝继续。此驱动会替换该测试包中已知前缀的合成数据；遇到未知会话 ID 拒绝继续，不操作日常包 `com.g64_cmd.whalechat`。API 域名被阻断，本地 `https://localhost` 异步资源正常加载。
+
+按下文方式构建并安装 C0 APK，启动 Pixel_8 后执行：
+
+```powershell
+node scripts/perf/run-history-search-android.mjs --apk=android/app/build/outputs/apk/debug/app-debug.apk --output=tmp/c3-android --cold=5 --warm=10
+```
+
+可传 `--serial`、`--adb`（与 C0 一样使用 `--参数=值`）。输出必须在仓库 `tmp/` 内。驱动仅注入固定 C0 的 1,000 个列表会话（2,000 条消息、826,000 字节正文），先采集标题过滤、正文首批与完成耗时，再另加一个深层未选分支验证路径、目标富内容就绪、焦点和 Android 返回。冷样本每次重启应用进程，热样本同进程重新改词；不清系统/磁盘缓存。正文时间含 160ms 防抖，完成时间另跨两次 rAF；标题时间为输入到过滤结果提交并跨两次 rAF。长任务只覆盖正文查询窗口。
+
+该夹具的首轮工程目标为标题结果 <100ms、正文首批 <1s、完成 <5s；完整原始样本与设备信息留在报告中，少于 20 次不报告 P95。它不验证千个长会话、混合富内容性能矩阵或峰值内存，真机与 TalkBack 另验。浏览器组件/IndexedDB 与输入竞争回归见 `pnpm test:c3`。
+
 ## 构建与运行
 
 前提是 JDK 21、现有 Android SDK/AVD 和依赖已安装。模拟器与 ADB 需在操作系统允许的环境运行；构建缓存的权限与普通项目写权限不同。

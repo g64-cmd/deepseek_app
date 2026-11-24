@@ -5,11 +5,16 @@ import {
   getVisibleMessages,
   type MessageVersions,
 } from '../../services/chat/branches.js'
-import { selectMessageVersion } from '../../services/chat/store.js'
+import {
+  clearMessageTarget,
+  selectMessageVersion,
+  useChatStore,
+} from '../../services/chat/store.js'
+import { useTranslate } from '../../i18n/index.js'
 import type { Session } from '../../services/chat/types.js'
 import { closeSearchPanel } from '../search/searchPanelState.js'
 import { AssistantMessage } from './AssistantMessage.js'
-import { RichGateContext, useRichGateRoot } from './richGate.js'
+import { RichGateContext, RichSearchTargetContext, useRichGateRoot } from './richGate.js'
 import { ScrollToBottomContext } from './scrollContext.js'
 import { UserMessage } from './UserMessage.js'
 import type { Message } from '../../services/chat/types.js'
@@ -44,6 +49,9 @@ export const MessageList = ({
   footer: React.ReactNode
 }) => {
   const isMobile = useIsMobile()
+  const t = useTranslate()
+  const target = useChatStore((state) => state.messageTarget)
+  const [located, setLocated] = useState<'historyLocated' | 'historyLocatedPending' | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
   // 富内容视口门控：观察根跟随当前布局的实际滚动层（桌面 container / 移动 scroll）。
@@ -86,6 +94,10 @@ export const MessageList = ({
 
   // 切换版本后将选择器留在原位置，避免回答长短变化导致操作区跳出视口。
   useLayoutEffect(() => {
+    if (useChatStore.getState().messageTarget?.sessionId === session.id) {
+      stickyRef.current = false
+      return
+    }
     const anchor = restoreScrollRef.current
     const scroll = scrollRef.current
     if (anchor && scroll) {
@@ -101,6 +113,67 @@ export const MessageList = ({
     stickyRef.current = true
     scrollToBottom()
   }, [session.id, lastMessageId, scrollToBottom])
+
+  useEffect(() => setLocated(null), [session.id])
+
+  useEffect(() => {
+    if (target?.sessionId !== session.id) {
+      return
+    }
+    if (target.signal?.aborted) {
+      clearMessageTarget(target.token)
+      return
+    }
+    stickyRef.current = false
+    setLocated(null)
+    const start = performance.now()
+    let frame: number
+    let readyFrames = 0
+    const valid = () =>
+      !target.signal?.aborted && useChatStore.getState().messageTarget?.token === target.token
+    const abort = () => {
+      cancelAnimationFrame(frame)
+      clearMessageTarget(target.token)
+    }
+    const locate = () => {
+      if (!valid()) {
+        return
+      }
+      const scroll = scrollRef.current
+      const node = scroll?.querySelector<HTMLElement>(
+        `[data-message-id="${CSS.escape(target.messageId)}"]`
+      )
+      if (!scroll || !node || node.closest('[inert]')) {
+        if (performance.now() - start < 10000) {
+          frame = requestAnimationFrame(locate)
+        } else {
+          clearMessageTarget(target.token)
+        }
+        return
+      }
+      const pending = node.querySelector('[data-rich-ready="false"]') !== null
+      readyFrames = pending ? 0 : readyFrames + 1
+      if (readyFrames < 2 && performance.now() - start < 10000) {
+        frame = requestAnimationFrame(locate)
+        return
+      }
+      if (!valid()) {
+        return
+      }
+      scroll.scrollTop += node.getBoundingClientRect().top - scroll.getBoundingClientRect().top - 16
+      scrollTopRef.current = scroll.scrollTop
+      // 聚焦消息组而非内部操作；目标富内容异步绘制完成后才计算位置。
+      node.focus({ preventScroll: true })
+      setLocated(pending ? 'historyLocatedPending' : 'historyLocated')
+      clearMessageTarget(target.token)
+    }
+    target.signal?.addEventListener('abort', abort, { once: true })
+    frame = requestAnimationFrame(locate)
+    return () => {
+      cancelAnimationFrame(frame)
+      target.signal?.removeEventListener('abort', abort)
+    }
+  }, [target, session.id, isMobile])
 
   useEffect(closeSearchPanel, [session.id, lastMessageId])
 
@@ -159,35 +232,43 @@ export const MessageList = ({
             data-message-scroll={isMobile ? 'true' : undefined}
           >
             <div ref={contentRef} className={styles.column}>
-              {messages.map((message, index) =>
-                message.role === 'user' ? (
-                  <UserMessage
-                    key={message.id}
-                    sessionId={session.id}
-                    message={message}
-                    retryUploadId={uploadRetryId}
-                    isFirst={index === 0}
-                    isLast={index === lastIndex || index === lastIndex - 1}
-                    busy={streaming}
-                    versions={versions.get(message.id) ?? EMPTY_VERSIONS}
-                    onSelectVersion={selectVersion}
-                  />
-                ) : (
-                  <AssistantMessage
-                    key={message.id}
-                    sessionId={session.id}
-                    message={message}
-                    isLast={index === lastIndex}
-                    streaming={streaming && index === lastIndex}
-                    busy={streaming}
-                    versions={versions.get(message.id) ?? EMPTY_VERSIONS}
-                    onSelectVersion={selectVersion}
-                  />
-                )
-              )}
+              {messages.map((message, index) => (
+                <RichSearchTargetContext.Provider
+                  key={message.id}
+                  value={target?.sessionId === session.id && target.messageId === message.id}
+                >
+                  {message.role === 'user' ? (
+                    <UserMessage
+                      key={message.id}
+                      sessionId={session.id}
+                      message={message}
+                      retryUploadId={uploadRetryId}
+                      isFirst={index === 0}
+                      isLast={index === lastIndex || index === lastIndex - 1}
+                      busy={streaming}
+                      versions={versions.get(message.id) ?? EMPTY_VERSIONS}
+                      onSelectVersion={selectVersion}
+                    />
+                  ) : (
+                    <AssistantMessage
+                      key={message.id}
+                      sessionId={session.id}
+                      message={message}
+                      isLast={index === lastIndex}
+                      streaming={streaming && index === lastIndex}
+                      busy={streaming}
+                      versions={versions.get(message.id) ?? EMPTY_VERSIONS}
+                      onSelectVersion={selectVersion}
+                    />
+                  )}
+                </RichSearchTargetContext.Provider>
+              ))}
             </div>
           </div>
           {footer}
+          <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+            {located ? t(located) : ''}
+          </span>
         </div>
       </RichGateContext.Provider>
     </ScrollToBottomContext.Provider>

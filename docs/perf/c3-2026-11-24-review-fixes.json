@@ -1,0 +1,359 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-24",
+  "timezone": "Asia/Shanghai",
+  "baseCommit": "973154eecc46794b0f30b42d0c5530169999e124",
+  "state": "Uncommitted C3 review fixes; human re-review pending",
+  "review": "tmp/develop-review-phase-c3-973154e-worktree.md",
+  "addressed": [
+    "C3-R01",
+    "C3-R02"
+  ],
+  "checks": {
+    "node": {
+      "passed": 127,
+      "total": 127
+    },
+    "c3Browser": {
+      "passed": 17,
+      "total": 17
+    },
+    "c2Browser": {
+      "passed": 17,
+      "total": 17
+    },
+    "independentOriginalReviewCases": {
+      "passed": 2,
+      "total": 2,
+      "changes": "compile entry path and line endings only; fixture logic and assertions unchanged"
+    },
+    "type": "passed",
+    "lint": "0 warnings / 0 errors",
+    "productionWebAndCapacitorSync": "passed",
+    "normalAndroidDebug": "passed"
+  },
+  "browser": {
+    "cssResponses": [
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/6345.app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/6345.app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/6345.app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/6345.app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/6345.app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/6345.app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/6345.app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/6345.app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      }
+    ],
+    "observations": [
+      {
+        "type": "deep-anchor",
+        "top": 16,
+        "scrollTop": 14656,
+        "offscreenGated": 28,
+        "focused": "target-answer"
+      },
+      {
+        "type": "consumed-location-layout",
+        "readingPosition": 14056,
+        "after": 58162,
+        "focusReplays": 0
+      },
+      {
+        "type": "scale",
+        "titles": [
+          0.20000000298023224,
+          0,
+          0.09999999403953552,
+          0,
+          0,
+          0.10000000894069672,
+          0.09999999403953552,
+          0,
+          0,
+          0
+        ],
+        "elapsedMs": 143.5,
+        "firstMs": 6.5,
+        "reports": [
+          {
+            "ms": 6.5,
+            "scanned": 16,
+            "total": 32
+          },
+          {
+            "ms": 143.5,
+            "scanned": 1000,
+            "total": 2000
+          }
+        ],
+        "reads": 1000,
+        "sessions": 1000,
+        "messages": 2000,
+        "textUnits": 436000,
+        "textBytes": 826000,
+        "resultTotal": 2000,
+        "shown": 200,
+        "cacheSize": 0
+      },
+      {
+        "type": "mobile-200",
+        "width": 247,
+        "scrollWidth": 247,
+        "controls": [
+          {
+            "name": "关闭历史检索",
+            "x": 185,
+            "right": 259,
+            "height": 49
+          },
+          {
+            "name": "",
+            "x": 12,
+            "right": 259,
+            "height": 53
+          },
+          {
+            "name": "对话标题消息正文",
+            "x": 74,
+            "right": 208,
+            "height": 44
+          },
+          {
+            "name": "清空",
+            "x": 12,
+            "right": 86,
+            "height": 49
+          },
+          {
+            "name": "中文 Deep Branch你 · 其他",
+            "x": 12,
+            "right": 259,
+            "height": 190
+          },
+          {
+            "name": "中文 Deep Branch助手 · 其",
+            "x": 12,
+            "right": 259,
+            "height": 400
+          }
+        ]
+      },
+      {
+        "type": "cancel-pending-location",
+        "operation": "query",
+        "before": 0,
+        "after": 0
+      },
+      {
+        "type": "cancel-pending-location",
+        "operation": "scope",
+        "before": 0,
+        "after": 0
+      },
+      {
+        "type": "cancel-pending-location",
+        "operation": "cancel",
+        "before": 0,
+        "after": 0
+      },
+      {
+        "type": "cancel-pending-location",
+        "operation": "close",
+        "before": 0,
+        "after": 0
+      }
+    ]
+  },
+  "independent": {
+    "cssResponses": [
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/6345.app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      }
+    ],
+    "observations": [
+      {
+        "type": "input-during-pending-location",
+        "whileLoading": {
+          "query": "needlecontinued",
+          "focused": "search",
+          "pending": 4
+        },
+        "after": {
+          "query": "needlecontinued",
+          "focusedType": "search",
+          "scrollTop": 0
+        }
+      },
+      {
+        "type": "interrupted-persisted-answer",
+        "cold": {
+          "hits": 1,
+          "streaming": 0
+        },
+        "opened": {
+          "hits": 1,
+          "status": "stopped",
+          "shown": true
+        }
+      }
+    ]
+  },
+  "normalApk": {
+    "path": "android/app/build/outputs/apk/debug/app-debug.apk",
+    "applicationId": "com.g64_cmd.whalechat",
+    "sha256": "291a57cfae97e584f7159beedf97d3709b9e7a6ca46d6e296c2aac1fcab26efa"
+  },
+  "sourceHashes": {
+    "package.json": "cc7f7f78aa2d5e8bd15bf7aedb67166c73faad59cc758afb23e80c5b24353292",
+    "scripts/perf/README.md": "e5ac148a686341b827e119c85a035a7d28d24a77d671c7de89f600e83df9daaa",
+    "scripts/perf/run-history-search-android.mjs": "7ec7f722edb6656ac9b68262c1308f802f4543be19153b8f0d63540669a73851",
+    "src/components/messages/AssistantMessage.tsx": "12f69ff6a57d81646d68ef5ca13cec002e666edf77cfa4613e40b017bcc9cc42",
+    "src/components/messages/MessageList.tsx": "6c0051732d228782c081ea76f1383de4d4d6a8897e12baad7fcf04712b0f22cd",
+    "src/components/messages/UserMessage.tsx": "524cd7d2058bf536102d3cdf1b6a5d9f5df3ec0d3dffa3fc3d9ac71551686697",
+    "src/components/messages/richGate.ts": "d6e103319100db333103363bce0069ce4d34b1ad29f086556a6022d3dd5fcaab",
+    "src/components/sider/HistorySearch.module.css": "5eaebc1c6dcb960d440c81c249da8f4f7fd08d5b9536f1766694b80e817dc033",
+    "src/components/sider/HistorySearch.tsx": "4c484444ebfa92d59373906cbca1f3d408f583629fea90264f02cc09e76c8b43",
+    "src/components/sider/Sider.module.css": "533d4848d635e1bd3e3f7f5f73ba689a3dee3d9ea97ccaf8b6d469c33729dd41",
+    "src/components/sider/Sider.tsx": "ef0eadc6c3c37a755f8843783743874ff26ac14be30c97f3ad66c89db21a19da",
+    "src/i18n/en.ts": "0bc4692681d904ea6bfc42ae9e5a0811f69e7efea14c57932d6994016fc7c687",
+    "src/i18n/zh.ts": "38b7c84acdfd6353d6d2dde200d911cb6e7506a13e5af8d8c6e90f254dd2ce91",
+    "src/services/chat/branches.ts": "fa8a864d51cb217d642fd8cb216006297a1a0c156a6bd444522bbe3a39d6e639",
+    "src/services/chat/historySearch.ts": "41bdee6233f3ef5383c7c0d9214a774a809179a4db981eb76f254894698a5d1f",
+    "src/services/chat/store.ts": "84a49a73a66c4060bc679c4a6118e19b72c4bc7fba0ba6348147c357828a90d7",
+    "tests/README.md": "6676eb1f1e9c7a925264b26909bcc295f421c39e2e15d234405eebf6f0da1ac4",
+    "tests/accessibility-browser.test.mjs": "0e19591731d3d19156ce42fe870025f4b7761cff86fd7a3351bc864b5c5bbe56",
+    "tests/helpers/entries/history-search-browser.tsx": "c329a18c5963d5eefbcbb33ca249e349d78f9a734ecb2370e72d78813ca2ba68",
+    "tests/helpers/entries/history-search.ts": "9d353d947550d7f6554cccf72bf5d33ba8497e1c860ca5aa1c1506bb6bbb2df2",
+    "tests/helpers/runtime/chat.cjs": "97252842c35a3c4c85b4ffe8c0a10b78d8a29c05428b2f816f9697cb813e45e8",
+    "tests/history-search-browser.test.mjs": "d4aa528529bfac8fcab5366f2ecbb2f6dee89604616f2f2dd7b0d2dffc62c18e",
+    "tests/history-search.test.mjs": "db1f5112ac85c82266aa379771f777fc434b8a1f54510a15b21cbfe601f4cca9"
+  },
+  "evidenceHashes": {
+    "tmp/c3-r-tests.log": "ceb5887777457bab2f43b5301b73214cf889399e2210d4921f502c712fd264d8",
+    "tmp/c3-r-browser.log": "034c06b70557470cdec429c8be45b512200a4eb4b9fc3ea8ae980c7635fd2bad",
+    "tmp/c3-r-browser/observations.json": "cbd038617fea03d8fdc83acf178ef5b839e091ce4651345ed679c912a443fcba",
+    "tmp/c3-r-browser/deep-anchor.png": "ae0e32b764e85a6206602f44ec301a50362dd63993b55b6c074fe6346152ab2d",
+    "tmp/c3-r-browser/mobile-anchor.png": "452f132c66d697bcaa173a9cbe9eb29bf8bdb250fcedf08052c53df9a653d1ea",
+    "tmp/c3-r-browser/mobile-search-200.png": "b574fd40f90ab9d98c1d9b4845ddfd7750b633b1617e1c6e50f33f5c8d47c46c",
+    "tmp/c3-r-c2-browser.log": "c5121929cda6b738e2b32f6e4ea0c02058434122b4d04f300f6febf297ec2df4",
+    "tmp/c3-r-web-build.log": "1716d718f1f18ebc85655a40727fc3025ea26570d6bcd04a0012925c6e7009d1",
+    "tmp/c3-r-android-build.log": "186e3b5313a9c071bb5cfedca3607bce73d61fed2530b7880086b3cae042b0da",
+    "tmp/c3-r-independent/results.log": "4f1e90ddb44e8a41764c027d8c1ded1867defd16b90af36e3d182eb9398bd95b",
+    "tmp/c3-r-independent/browser/observations.json": "df577e01745164eae1b47cb278dbd85b0e964855414b7dcf054771a8c09ed014",
+    "tmp/c3-r-independent/browser/focus-stolen-after-new-query.png": "3dc40e051037a319102e6e16a6b7eb668f50fe1cc037d774d4b7497da7021292"
+  },
+  "reviewInputHash": "7f03ffe985b62f576078f07f5ddf343398f59f331d354f0f3d2359e9cd272681",
+  "limitations": [
+    "No new simulator or physical device tests; previous Android measurements belong to previous APK",
+    "No C1 shelved optimization or C4 paid API work in this batch",
+    "TalkBack, modern WebView, Android display/font/landscape/split-screen and scale/peak-memory acceptance pending"
+  ]
+}

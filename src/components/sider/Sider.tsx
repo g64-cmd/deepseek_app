@@ -16,12 +16,15 @@ import { openSettings } from '../settings/settingsDialogState.js'
 import { closeMobileSider, useMobileSider } from './mobileSiderState.js'
 import { SessionItem } from './SessionItem.js'
 import styles from './Sider.module.css'
+import { HistorySearch } from './HistorySearch.js'
+import { openHistorySearch, useHistorySearch } from '../../services/chat/historySearch.js'
 
 /** 展开的侧边栏：名称与收起按钮、开启新对话、按时间分组的会话列表、底部设置；移动端放在抽屉里，收起按钮关闭抽屉 */
 export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
   const t = useTranslate()
   const sessions = useChatStore((state) => state.sessions)
   const activeId = useChatStore((state) => state.activeId)
+  const searching = useHistorySearch((state) => state.open)
   const [now, setNow] = useState(Date.now)
   const groups = useMemo(() => groupSessions(sessions, now, t), [sessions, now, t])
   const [deleting, setDeleting] = useState<SessionSummary | null>(null)
@@ -76,23 +79,36 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
         </span>
         {t('newChat')}
       </button>
-      <div className={styles.listWrap}>
-        <div className={styles.list}>
-          {groups.map((group) => (
-            <div key={group.key} className={styles.section}>
-              <div className={styles.sectionHeader}>{group.label}</div>
-              {group.sessions.map((session) => (
-                <SessionItem
-                  key={session.id}
-                  session={session}
-                  active={session.id === activeId}
-                  onDelete={() => setDeleting(session)}
-                />
-              ))}
-            </div>
-          ))}
+      <button
+        type="button"
+        className={styles.searchButton}
+        data-open-history-search
+        aria-expanded={searching}
+        onClick={openHistorySearch}
+      >
+        {t('historySearch')}
+      </button>
+      {searching ? (
+        <HistorySearch />
+      ) : (
+        <div className={styles.listWrap}>
+          <div className={styles.list}>
+            {groups.map((group) => (
+              <div key={group.key} className={styles.section}>
+                <div className={styles.sectionHeader}>{group.label}</div>
+                {group.sessions.map((session) => (
+                  <SessionItem
+                    key={session.id}
+                    session={session}
+                    active={session.id === activeId}
+                    onDelete={() => setDeleting(session)}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
       <div className={styles.bottom}>
         <button type="button" className={styles.settings} onClick={() => openSettings('general')}>
           <span className={styles.settingsIcon}>

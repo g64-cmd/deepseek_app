@@ -74,6 +74,7 @@ export const UserMessage = memo(function UserMessage({
     <div
       className={clsx(styles.container, isFirst && styles.isFirst)}
       data-message-id={message.id}
+      tabIndex={-1}
       data-message-role="user"
       role="group"
       aria-label={t('userMessageLabel')}

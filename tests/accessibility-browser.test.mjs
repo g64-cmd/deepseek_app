@@ -359,6 +359,8 @@ test('citation nested in an external link opens its own target once with keyboar
   cdp.listeners.set('Page.windowOpen', new Set([(event) => opened.push(event.url)]))
   await focus('[role=link]')
   await key('Enter')
+  // 平台适配器按需 import；等真实 windowOpen 事件，不能假定 40ms 内已加载完成。
+  for (let i = 0; i < 100 && !opened.length; i++) await sleep(20)
   assert.deepEqual(opened, ['https://source.invalid/'])
   const targets = await cdp.call('Target.getTargets')
   for (const target of targets.targetInfos.filter((target) =>

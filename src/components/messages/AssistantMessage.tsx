@@ -59,7 +59,14 @@ export const AssistantMessage = memo(function AssistantMessage({
   const waiting = streaming && view.steps.length === 0 && !view.answer && !message.thinking
   const summaryEntry = `${message.id}-summary`
   return (
-    <div className={styles.message} role="group" aria-label={t('assistantMessageLabel')} data-message-id={message.id} data-message-role="assistant">
+    <div
+      tabIndex={-1}
+      className={styles.message}
+      role="group"
+      aria-label={t('assistantMessageLabel')}
+      data-message-id={message.id}
+      data-message-role="assistant"
+    >
       {refused ? null : (
         <ReplyArea
           message={message}
@@ -157,7 +164,8 @@ export const AssistantMessage = memo(function AssistantMessage({
         </div>
       ) : null}
       {!streaming && !refused && view.searchResults.length > 0 ? (
-        <button type="button"
+        <button
+          type="button"
           className={clsx(styles.summary, panelEntry === summaryEntry && styles.summaryActive)}
           aria-expanded={panelEntry === summaryEntry}
           onClick={() => toggleSearchPanel(summaryEntry, view.searchResults)}

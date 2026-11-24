@@ -115,3 +115,40 @@ export const selectVersion = (original: Session, messageId: string): Session => 
     ),
   }
 }
+
+/** 检索命中可位于任意深层分支；先验证完整祖先链，再一次性选择路径，保留命中之后的选择。 */
+export const selectMessagePath = (original: Session, messageId: string): Session | undefined => {
+  const session = normalizeSession(original)
+  const byId = new Map(session.messages.map((message) => [message.id, message]))
+  const path: Message[] = []
+  const visited = new Set<string>()
+  let id: string | null | undefined = messageId
+  while (id != null) {
+    const message = byId.get(id)
+    if (!message || visited.has(id)) {
+      return undefined
+    }
+    visited.add(id)
+    path.push(message)
+    id = message.parentId
+    if (id === undefined) {
+      return undefined
+    }
+  }
+  const root = path.at(-1)
+  if (!root) {
+    return undefined
+  }
+  const selected = new Map(path.slice(1).map((message, index) => [message.id, path[index].id]))
+  const rootMessageId = root.id
+  const messages = session.messages.map((message) => {
+    const child = selected.get(message.id)
+    return child && child !== message.selectedChildId
+      ? { ...message, selectedChildId: child }
+      : message
+  })
+  return rootMessageId === session.rootMessageId &&
+    messages.every((message, i) => message === session.messages[i])
+    ? session
+    : { ...session, rootMessageId, messages }
+}

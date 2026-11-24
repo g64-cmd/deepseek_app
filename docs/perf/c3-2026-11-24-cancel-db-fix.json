@@ -1,0 +1,512 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-24",
+  "timezone": "Asia/Shanghai",
+  "baseCommit": "973154eecc46794b0f30b42d0c5530169999e124",
+  "state": "Uncommitted database-cancel follow-up; human re-review pending",
+  "addressed": [
+    "C3-R01 remaining P2: cancel during pending database open"
+  ],
+  "review": "tmp/develop-review-phase-c3-r2-2026-11-24.md",
+  "reviewInputHash": "8b7eb824eafc5e106721d4faeb64bdb0fee77797a064ff36a7ca58e7bea1ed6f",
+  "checks": {
+    "node": {
+      "passed": 127,
+      "total": 127
+    },
+    "c3Browser": {
+      "passed": 22,
+      "total": 22
+    },
+    "c2Browser": {
+      "passed": 17,
+      "total": 17
+    },
+    "originalDatabaseReviewCases": {
+      "passed": 4,
+      "total": 4,
+      "changes": "compile entry path and line endings only"
+    },
+    "type": "passed",
+    "lint": "0 warnings / 0 errors",
+    "webProductionAndCapacitorSync": "passed",
+    "normalAndroidDebug": "passed"
+  },
+  "browser": {
+    "cssResponses": [
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/6345.app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/6345.app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/6345.app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/6345.app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/6345.app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/6345.app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/6345.app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/6345.app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      }
+    ],
+    "observations": [
+      {
+        "type": "deep-anchor",
+        "top": 16,
+        "scrollTop": 14656,
+        "offscreenGated": 28,
+        "focused": "target-answer"
+      },
+      {
+        "type": "consumed-location-layout",
+        "readingPosition": 14056,
+        "after": 58162,
+        "focusReplays": 0
+      },
+      {
+        "type": "scale",
+        "titles": [
+          0.10000000894069672,
+          0.09999999403953552,
+          0.10000000894069672,
+          0,
+          0,
+          0.09999999403953552,
+          0,
+          0,
+          0.09999999403953552,
+          0
+        ],
+        "elapsedMs": 142.1000000089407,
+        "firstMs": 13.200000002980232,
+        "reports": [
+          {
+            "ms": 13.200000002980232,
+            "scanned": 16,
+            "total": 32
+          },
+          {
+            "ms": 142.1000000089407,
+            "scanned": 1000,
+            "total": 2000
+          }
+        ],
+        "reads": 1000,
+        "sessions": 1000,
+        "messages": 2000,
+        "textUnits": 436000,
+        "textBytes": 826000,
+        "resultTotal": 2000,
+        "shown": 200,
+        "cacheSize": 0
+      },
+      {
+        "type": "mobile-200",
+        "width": 247,
+        "scrollWidth": 247,
+        "controls": [
+          {
+            "name": "关闭历史检索",
+            "x": 185,
+            "right": 259,
+            "height": 49
+          },
+          {
+            "name": "",
+            "x": 12,
+            "right": 259,
+            "height": 53
+          },
+          {
+            "name": "对话标题消息正文",
+            "x": 74,
+            "right": 208,
+            "height": 44
+          },
+          {
+            "name": "清空",
+            "x": 12,
+            "right": 86,
+            "height": 49
+          },
+          {
+            "name": "中文 Deep Branch你 · 其他",
+            "x": 12,
+            "right": 259,
+            "height": 190
+          },
+          {
+            "name": "中文 Deep Branch助手 · 其",
+            "x": 12,
+            "right": 259,
+            "height": 400
+          }
+        ]
+      },
+      {
+        "type": "cancel-pending-location",
+        "operation": "query",
+        "before": 0,
+        "after": 0
+      },
+      {
+        "type": "cancel-pending-location",
+        "operation": "scope",
+        "before": 0,
+        "after": 0
+      },
+      {
+        "type": "cancel-pending-location",
+        "operation": "cancel",
+        "before": 0,
+        "after": 0
+      },
+      {
+        "type": "cancel-pending-location",
+        "operation": "close",
+        "before": 0,
+        "after": 0
+      },
+      {
+        "type": "cancel-database-open",
+        "operation": "query",
+        "completeScan": false,
+        "released": 1,
+        "beforeRelease": {
+          "active": null,
+          "focused": "INPUT",
+          "type": "search",
+          "message": null,
+          "scroll": null
+        },
+        "afterRelease": {
+          "active": null,
+          "focused": "INPUT",
+          "type": "search",
+          "message": null,
+          "scroll": null
+        }
+      },
+      {
+        "type": "cancel-database-open",
+        "operation": "scope",
+        "completeScan": false,
+        "released": 1,
+        "beforeRelease": {
+          "active": null,
+          "focused": "SELECT",
+          "type": "select-one",
+          "message": null,
+          "scroll": null
+        },
+        "afterRelease": {
+          "active": null,
+          "focused": "SELECT",
+          "type": "select-one",
+          "message": null,
+          "scroll": null
+        }
+      },
+      {
+        "type": "cancel-database-open",
+        "operation": "cancel",
+        "completeScan": false,
+        "released": 1,
+        "beforeRelease": {
+          "active": null,
+          "focused": "BODY",
+          "type": null,
+          "message": null,
+          "scroll": null
+        },
+        "afterRelease": {
+          "active": null,
+          "focused": "BODY",
+          "type": null,
+          "message": null,
+          "scroll": null
+        }
+      },
+      {
+        "type": "cancel-database-open",
+        "operation": "close",
+        "completeScan": false,
+        "released": 1,
+        "beforeRelease": {
+          "active": null,
+          "focused": "BUTTON",
+          "type": "button",
+          "message": null,
+          "scroll": null
+        },
+        "afterRelease": {
+          "active": null,
+          "focused": "BUTTON",
+          "type": "button",
+          "message": null,
+          "scroll": null
+        }
+      },
+      {
+        "type": "cancel-database-open",
+        "operation": "cancel",
+        "completeScan": true,
+        "released": 1,
+        "beforeRelease": {
+          "active": null,
+          "focused": "BODY",
+          "type": null,
+          "message": null,
+          "scroll": null
+        },
+        "afterRelease": {
+          "active": null,
+          "focused": "BODY",
+          "type": null,
+          "message": null,
+          "scroll": null
+        }
+      }
+    ]
+  },
+  "independent": {
+    "cssResponses": [
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      }
+    ],
+    "observations": [
+      {
+        "type": "cancel-opening-database",
+        "operation": "query",
+        "before": {
+          "active": null,
+          "phase": "searching",
+          "disabled": true,
+          "delayedReads": 19
+        },
+        "after": {
+          "active": null,
+          "phase": "searching",
+          "delayedReads": 21
+        }
+      },
+      {
+        "type": "cancel-opening-database",
+        "operation": "scope",
+        "before": {
+          "active": null,
+          "phase": "searching",
+          "disabled": true,
+          "delayedReads": 19
+        },
+        "after": {
+          "active": null,
+          "phase": "idle",
+          "delayedReads": 19
+        }
+      },
+      {
+        "type": "cancel-opening-database",
+        "operation": "cancel",
+        "before": {
+          "active": null,
+          "phase": "searching",
+          "disabled": true,
+          "delayedReads": 19
+        },
+        "after": {
+          "active": null,
+          "phase": "cancelled",
+          "delayedReads": 19
+        }
+      },
+      {
+        "type": "cancel-opening-database",
+        "operation": "close",
+        "before": {
+          "active": null,
+          "phase": "searching",
+          "disabled": true,
+          "delayedReads": 19
+        },
+        "after": {
+          "active": null,
+          "delayedReads": 19
+        }
+      }
+    ]
+  },
+  "normalApk": {
+    "path": "android/app/build/outputs/apk/debug/app-debug.apk",
+    "applicationId": "com.g64_cmd.whalechat",
+    "sha256": "a9eaf3ecbcee03c1b040b681244283acae362b897fbbafa9aa1db20e3522963d"
+  },
+  "sourceHashes": {
+    "package.json": "cc7f7f78aa2d5e8bd15bf7aedb67166c73faad59cc758afb23e80c5b24353292",
+    "scripts/perf/README.md": "e5ac148a686341b827e119c85a035a7d28d24a77d671c7de89f600e83df9daaa",
+    "scripts/perf/run-history-search-android.mjs": "7ec7f722edb6656ac9b68262c1308f802f4543be19153b8f0d63540669a73851",
+    "src/components/messages/AssistantMessage.tsx": "12f69ff6a57d81646d68ef5ca13cec002e666edf77cfa4613e40b017bcc9cc42",
+    "src/components/messages/MessageList.tsx": "6c0051732d228782c081ea76f1383de4d4d6a8897e12baad7fcf04712b0f22cd",
+    "src/components/messages/UserMessage.tsx": "524cd7d2058bf536102d3cdf1b6a5d9f5df3ec0d3dffa3fc3d9ac71551686697",
+    "src/components/messages/richGate.ts": "d6e103319100db333103363bce0069ce4d34b1ad29f086556a6022d3dd5fcaab",
+    "src/components/sider/HistorySearch.module.css": "5eaebc1c6dcb960d440c81c249da8f4f7fd08d5b9536f1766694b80e817dc033",
+    "src/components/sider/HistorySearch.tsx": "9b9d02f09f19e30bb9e5e6c5cde81a896466f1098e9783db2e5222df5717d34f",
+    "src/components/sider/Sider.module.css": "533d4848d635e1bd3e3f7f5f73ba689a3dee3d9ea97ccaf8b6d469c33729dd41",
+    "src/components/sider/Sider.tsx": "ef0eadc6c3c37a755f8843783743874ff26ac14be30c97f3ad66c89db21a19da",
+    "src/i18n/en.ts": "0bc4692681d904ea6bfc42ae9e5a0811f69e7efea14c57932d6994016fc7c687",
+    "src/i18n/zh.ts": "38b7c84acdfd6353d6d2dde200d911cb6e7506a13e5af8d8c6e90f254dd2ce91",
+    "src/services/chat/branches.ts": "fa8a864d51cb217d642fd8cb216006297a1a0c156a6bd444522bbe3a39d6e639",
+    "src/services/chat/historySearch.ts": "41bdee6233f3ef5383c7c0d9214a774a809179a4db981eb76f254894698a5d1f",
+    "src/services/chat/store.ts": "84a49a73a66c4060bc679c4a6118e19b72c4bc7fba0ba6348147c357828a90d7",
+    "tests/README.md": "2196fcf02434597b468bcf93848fd98c6f8d47e51d6bfa1f6171616bf4386f07",
+    "tests/accessibility-browser.test.mjs": "0e19591731d3d19156ce42fe870025f4b7761cff86fd7a3351bc864b5c5bbe56",
+    "tests/helpers/entries/history-search-browser.tsx": "c329a18c5963d5eefbcbb33ca249e349d78f9a734ecb2370e72d78813ca2ba68",
+    "tests/helpers/entries/history-search.ts": "9d353d947550d7f6554cccf72bf5d33ba8497e1c860ca5aa1c1506bb6bbb2df2",
+    "tests/helpers/runtime/chat.cjs": "97252842c35a3c4c85b4ffe8c0a10b78d8a29c05428b2f816f9697cb813e45e8",
+    "tests/history-search-browser.test.mjs": "60d3b369b8cdb9d06da1e07e808419431cd4023a3c15210c804ba540fbc0f91f",
+    "tests/history-search.test.mjs": "db1f5112ac85c82266aa379771f777fc434b8a1f54510a15b21cbfe601f4cca9"
+  },
+  "evidenceHashes": {
+    "tmp/c3-r3-before-cancel.log": "5fd8ca8effbaad215ea34458205d9604fa855b2da748d260ce9e8fce46f472ed",
+    "tmp/c3-r3-tests.log": "5969fb8bb58d69e5460f708e64548bf7798dd9eee7c0e5dfd484170bb2096932",
+    "tmp/c3-r3-browser.log": "2a6a989d78b5264d2938767b02ef9e57a196ec9d61469e62f59c893aec9efa7e",
+    "tmp/c3-r3-browser/observations.json": "741548092a97559541a1491e8a7e5088301d8bf4e79b37eec420d544a5ad6f83",
+    "tmp/c3-r3-c2-browser.log": "bd3d58e22eba8c840e39a94599033a569772520f2010938ec7d46eee47b61a88",
+    "tmp/c3-r3-web-build.log": "9befdc785bb75260cd120244033dc467ca3f53872803c103a229444a09de165f",
+    "tmp/c3-r3-android-build.log": "ea35954ee1d525ac704a99048244092dc6dc2e810b30c74d547a2dd68f9a9fda",
+    "tmp/c3-r3-independent/results.log": "200396ae29a87ecd7909186c1f30b0e8f90bba7bee41e0d139e78682c717e940",
+    "tmp/c3-r3-independent/browser/observations.json": "d53a3fbffa2fc096a3abe9dd629b8146427e5021985386acf9d79adc23380e52"
+  },
+  "limitations": [
+    "No new simulator, physical device or TalkBack acceptance",
+    "No C1 or C4 acceptance work; previous Android performance samples belong to historical APKs"
+  ]
+}
