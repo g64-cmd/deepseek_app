@@ -15,7 +15,13 @@ tmp/
 docs/deepseek-api/snapshot-*/
 # Android 构建产物与本地配置
 android/.gradle/
+android/.kotlin/
 android/build/
 android/app/build/
 android/local.properties
+android/keystore.properties
+android/*.jks
+android/*.keystore
+android/app/*.jks
+android/app/*.keystore
 android/capacitor-cordova-android-plugins/
