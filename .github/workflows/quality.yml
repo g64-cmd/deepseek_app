@@ -42,7 +42,7 @@ jobs:
       - name: Build web
         run: pnpm build
 
-      # Android 构建：AGP 支持上限为 JDK 21（本机同样用 JDK 21，见 docs/README.md）
+      # Android 构建：AGP 支持上限为 JDK 21（本机同样用 JDK 21）
       - name: Set up JDK 21
         uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:

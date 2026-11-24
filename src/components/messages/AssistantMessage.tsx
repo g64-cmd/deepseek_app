@@ -65,7 +65,6 @@ export const AssistantMessage = memo(function AssistantMessage({
       role="group"
       aria-label={t('assistantMessageLabel')}
       data-message-id={message.id}
-      data-message-role="assistant"
     >
       {refused ? null : (
         <ReplyArea

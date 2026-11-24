@@ -1,13 +1,14 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import http from 'node:http'
+import os from 'node:os'
 import path from 'node:path'
 import { after, before, beforeEach, test } from 'node:test'
 import { rspack } from '@rspack/core'
 import { root } from './helpers/compile.mjs'
-import { Cdp } from '../scripts/perf/cdp.mjs'
+import { Cdp } from './helpers/cdp.mjs'
 
 // Opt-in real browser suite. No packages/downloads, profile reuse, API keys or paid requests.
 const chrome =
@@ -21,18 +22,6 @@ const chrome =
 let output, profile, server, browser, cdp
 let delayChunks = 0
 const cssResponses = []
-const observations = []
-const artifacts = process.env.C3_ARTIFACTS ? path.resolve(root, process.env.C3_ARTIFACTS) : null
-const screenshot = async (name) => {
-  if (!artifacts) return
-  assert.ok(
-    artifacts.startsWith(path.join(root, 'tmp') + path.sep),
-    'C3_ARTIFACTS must be under workspace tmp/'
-  )
-  await mkdir(artifacts, { recursive: true })
-  const shot = await cdp.call('Page.captureScreenshot', { format: 'png' })
-  await writeFile(path.join(artifacts, name + '.png'), Buffer.from(shot.data, 'base64'))
-}
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 const check = async (expression, expected = true) =>
   assert.deepEqual(await cdp.evaluate(expression), expected)
@@ -124,9 +113,8 @@ const loadedStyles = async () => {
 
 before(async () => {
   assert.ok(chrome, 'Set C3_BROWSER to a Chrome/Edge/Chromium executable')
-  await mkdir(path.join(root, 'tmp'), { recursive: true })
-  output = await mkdtemp(path.join(root, 'tmp/c3-browser-build-'))
-  profile = await mkdtemp(path.join(root, 'tmp/c3-browser-profile-'))
+  output = await mkdtemp(path.join(os.tmpdir(), 'whalechat-search-build-'))
+  profile = await mkdtemp(path.join(os.tmpdir(), 'whalechat-search-profile-'))
   const compiler = rspack({
     context: root,
     mode: 'production',
@@ -235,7 +223,6 @@ before(async () => {
   assert.ok(port, 'Browser did not expose CDP')
   const pages = await (await fetch(`http://127.0.0.1:${port}/json`)).json()
   cdp = await Cdp.connect(pages.find((page) => page.type === 'page').webSocketDebuggerUrl)
-  console.log('C3 browser:', JSON.stringify(await cdp.call('Browser.getVersion')))
   await cdp.call('Network.enable')
   await cdp.call('Page.enable')
   await cdp.call('Network.setBlockedURLs', { urls: ['https://*', 'http://fixture.invalid/*'] })
@@ -269,13 +256,6 @@ beforeEach(async () => {
 })
 
 after(async () => {
-  if (artifacts && artifacts.startsWith(path.join(root, 'tmp') + path.sep)) {
-    await mkdir(artifacts, { recursive: true })
-    await writeFile(
-      path.join(artifacts, 'observations.json'),
-      JSON.stringify({ cssResponses, observations }, null, 2) + '\n'
-    )
-  }
   if (cdp) {
     await cdp.call('Browser.close').catch(() => {})
     cdp.close()
@@ -287,8 +267,8 @@ after(async () => {
   server?.closeAllConnections()
   await new Promise((resolve) => (server ? server.close(resolve) : resolve()))
   for (const directory of [output, profile].filter(Boolean)) {
-    assert.equal(path.dirname(directory), path.join(root, 'tmp'))
-    assert.match(path.basename(directory), /^c3-browser-(build|profile)-/)
+    assert.equal(path.dirname(directory), os.tmpdir())
+    assert.match(path.basename(directory), /^whalechat-search-(build|profile)-/)
     await rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
   }
 })
@@ -347,8 +327,6 @@ test('deep branch hit selects ancestors, enhances only target, waits for rich co
   assert.ok(Math.abs(geometry.top - 16) < 4)
   assert.ok(geometry.offscreenGated > 0)
   await check('c3.state().messageTarget', null)
-  observations.push({ type: 'deep-anchor', ...geometry })
-  await screenshot('deep-anchor')
   await sleep(500)
   await check('document.activeElement.dataset.messageId', 'target-answer')
   await check(
@@ -358,9 +336,6 @@ test('deep branch hit selects ancestors, enhances only target, waits for rich co
   await key('Escape')
   await check('!!document.querySelector("[data-history-search]")', false)
   await run('document.querySelector("[data-message-scroll]").scrollTop -= 600')
-  const readingPosition = await cdp.evaluate(
-    'document.querySelector("[data-message-scroll]").scrollTop'
-  )
   await run(
     '(()=>{const node=document.querySelector("[data-message-id=target-answer]");const focus=node.focus;window.__focusReplay=0;window.__watchedTarget=node;node.focus=function(options){window.__focusReplay++;return focus.call(this,options)}})()'
   )
@@ -370,12 +345,6 @@ test('deep branch hit selects ancestors, enhances only target, waits for rich co
   )
   await check('window.__focusReplay', 0)
   await check('c3.state().messageTarget', null)
-  observations.push({
-    type: 'consumed-location-layout',
-    readingPosition,
-    after: await cdp.evaluate('document.querySelector("[data-message-scroll]").scrollTop'),
-    focusReplays: 0,
-  })
 })
 
 test('mobile Back closes search before drawer; selecting title closes drawer, and reopening retains query', async () => {
@@ -406,7 +375,6 @@ test('mobile body hit closes drawer and focuses target after inert is released',
   await wait('document.activeElement.dataset.messageId === "target-user"')
   await check('!!document.querySelector("[data-mobile-drawer-panel]")', false)
   await check('document.querySelectorAll("[inert]").length', 0)
-  await screenshot('mobile-anchor')
 })
 
 test('rapid query changes and cancellation cannot republish old results, locale change preserves focus and query', async () => {
@@ -467,7 +435,7 @@ test('streaming text does not enter search until completion; branch open is bloc
   await wait('document.activeElement.dataset.messageId === "target-answer"')
 })
 
-test('1000-session C0 text scale measures first/completion latency and bounds result/cache size', async () => {
+test('1000-session text scale measures first/completion latency and bounds result/cache size', async () => {
   await cdp.evaluate('c3.seed(true)')
   const scale = await cdp.evaluate('c3.scale()')
   assert.equal(scale.sessions, 1000)
@@ -477,11 +445,8 @@ test('1000-session C0 text scale measures first/completion latency and bounds re
   assert.equal(scale.shown, 200)
   assert.equal(scale.cacheSize, 0)
   assert.ok(Math.max(...scale.titles) < 100, '1000 title filter <100ms')
-  // Fixed desktop engineering budget for this fixture; Android is recorded separately.
   assert.ok(scale.firstMs < 1000, 'first batch <1s')
   assert.ok(scale.elapsedMs < 5000, 'full scan <5s')
-  observations.push({ type: 'scale', ...scale })
-  console.log('C3 scale:', JSON.stringify(scale))
 })
 
 test('read failure is explicit and retry recovers without an empty-success result', async () => {
@@ -518,7 +483,6 @@ test('320px search at 200% text and coarse pointer keeps controls inside a scrol
     ),
     JSON.stringify(geometry)
   )
-  observations.push({ type: 'mobile-200', ...geometry })
   await run('c3.setLocale("en-US")')
   await check(
     '(()=>{const root=document.querySelector("[data-history-search]");return root.scrollWidth<=root.clientWidth+1 && root.scrollHeight>root.clientHeight && [...root.querySelectorAll("input,select,button")].every(n=>n.getBoundingClientRect().right<=272)})()'
@@ -526,7 +490,6 @@ test('320px search at 200% text and coarse pointer keeps controls inside a scrol
   await run(
     'document.querySelector("[data-history-hit=target-user]").scrollIntoView({block:"center"})'
   )
-  await screenshot('mobile-search-200')
   await click('[data-history-hit=target-user]')
   await wait('document.activeElement.dataset.messageId === "target-user"')
 })
@@ -565,7 +528,6 @@ for (const operation of ['query', 'scope', 'cancel', 'close']) {
       await check('document.activeElement.hasAttribute("data-open-history-search")')
     const after = await cdp.evaluate('document.querySelector("[data-message-scroll]").scrollTop')
     assert.equal(after, before, 'cancelled location must not move the reading position')
-    observations.push({ type: 'cancel-pending-location', operation, before, after })
   })
 }
 
@@ -667,7 +629,7 @@ for (const [operation, completeScan] of [
     await wait(
       'document.querySelector("[data-history-hit]") && document.querySelector("[data-history-search]").dataset.historyPhase === "searching"'
     )
-    await cdp.evaluate('window.__holdGetId="c0-v1-list-0000"')
+    await cdp.evaluate('window.__holdGetId="scale-list-0000"')
     await click('[data-history-hit]')
     await wait('window.__heldReads.length > 0')
     await check('c3.state().activeId', null)
@@ -723,13 +685,5 @@ for (const [operation, completeScan] of [
         'document.querySelector("[data-history-search]").dataset.historyPhase',
         'cancelled'
       )
-    observations.push({
-      type: 'cancel-database-open',
-      operation,
-      completeScan,
-      released,
-      beforeRelease,
-      afterRelease,
-    })
   })
 }

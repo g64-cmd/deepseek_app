@@ -24,9 +24,51 @@ import {
   searchableMessageText,
 } from '../../../src/services/chat/historySearch.js'
 import { setLocale, setThemePreference, useSettings } from '../../../src/services/settings.js'
-import { buildFixture } from '../../../scripts/perf/fixtures.mjs'
 import '../../../src/app/theme.css'
 import '../../../src/app/global.css'
+
+const SCALE_TIME = Date.parse('2026-11-22T00:00:00Z')
+const SCALE_FILLER =
+  '用于检索规模回归的中文与 English 混排段落，包含数字 12345、标识符 getMessageUsage 和标点。'
+const buildScaleSessions = (count = 1000) =>
+  Array.from({ length: count }, (_, n) => {
+    const label = String(n).padStart(4, '0')
+    const id = `scale-list-${label}`
+    const createdAt = SCALE_TIME - n * 60_000
+    const userId = `${id}-u0`
+    const assistantId = `${id}-a0`
+    return {
+      id,
+      title: `Scale list-${label}`,
+      createdAt,
+      updatedAt: createdAt,
+      rootMessageId: userId,
+      messages: [
+        {
+          id: userId,
+          role: 'user',
+          content: `问题 0：${SCALE_FILLER}`,
+          files: [],
+          createdAt,
+          parentId: null,
+          selectedChildId: assistantId,
+        },
+        {
+          id: assistantId,
+          role: 'assistant',
+          createdAt: createdAt + 1000,
+          model: 'deepseek-flash',
+          thinking: false,
+          search: false,
+          prefix: true,
+          status: 'done',
+          blocks: [{ type: 'text', text: `第 0 轮。\n\n${Array(6).fill(SCALE_FILLER).join('\n\n')}` }],
+          stopReason: 'end_turn',
+          parentId: userId,
+        },
+      ],
+    }
+  })
 
 setupTheme()
 const user = (id, parentId, content = '普通问题', selectedChildId) => ({
@@ -129,7 +171,7 @@ const seed = async (scale = false) => {
   setThemePreference('light')
   useSettings.setState({ apiKey: null })
   data = scale
-    ? buildFixture().sessions.filter((session) => session.id.startsWith('c0-v1-list-'))
+    ? buildScaleSessions()
     : [
         deep(),
         {

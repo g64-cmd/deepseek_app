@@ -1,13 +1,14 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import http from 'node:http'
+import os from 'node:os'
 import path from 'node:path'
 import { after, before, beforeEach, test } from 'node:test'
 import { rspack } from '@rspack/core'
 import { root } from './helpers/compile.mjs'
-import { Cdp } from '../scripts/perf/cdp.mjs'
+import { Cdp } from './helpers/cdp.mjs'
 
 // Opt-in real browser suite. No packages/downloads, profile reuse, API keys or paid requests.
 const chrome =
@@ -20,18 +21,6 @@ const chrome =
   ].find(existsSync)
 let output, profile, server, browser, cdp
 const cssResponses = []
-const observations = []
-const artifacts = process.env.C2_ARTIFACTS ? path.resolve(root, process.env.C2_ARTIFACTS) : null
-const screenshot = async (name) => {
-  if (!artifacts) return
-  assert.ok(
-    artifacts.startsWith(path.join(root, 'tmp') + path.sep),
-    'C2_ARTIFACTS must be under workspace tmp/'
-  )
-  await mkdir(artifacts, { recursive: true })
-  const shot = await cdp.call('Page.captureScreenshot', { format: 'png' })
-  await writeFile(path.join(artifacts, name + '.png'), Buffer.from(shot.data, 'base64'))
-}
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 const check = async (expression, expected = true) =>
   assert.deepEqual(await cdp.evaluate(expression), expected)
@@ -126,9 +115,8 @@ const loadedStyles = async () => {
 
 before(async () => {
   assert.ok(chrome, 'Set C2_BROWSER to a Chrome/Edge/Chromium executable')
-  await mkdir(path.join(root, 'tmp'), { recursive: true })
-  output = await mkdtemp(path.join(root, 'tmp/c2-browser-build-'))
-  profile = await mkdtemp(path.join(root, 'tmp/c2-browser-profile-'))
+  output = await mkdtemp(path.join(os.tmpdir(), 'whalechat-a11y-build-'))
+  profile = await mkdtemp(path.join(os.tmpdir(), 'whalechat-a11y-profile-'))
   const compiler = rspack({
     context: root,
     mode: 'production',
@@ -235,7 +223,6 @@ before(async () => {
   assert.ok(port, 'Browser did not expose CDP')
   const pages = await (await fetch(`http://127.0.0.1:${port}/json`)).json()
   cdp = await Cdp.connect(pages.find((page) => page.type === 'page').webSocketDebuggerUrl)
-  console.log('C2 browser:', JSON.stringify(await cdp.call('Browser.getVersion')))
   await cdp.call('Network.enable')
   await cdp.call('Page.enable')
   await cdp.call('Network.setBlockedURLs', { urls: ['https://*', 'http://fixture.invalid/*'] })
@@ -266,13 +253,6 @@ beforeEach(async () => {
 })
 
 after(async () => {
-  if (artifacts && artifacts.startsWith(path.join(root, 'tmp') + path.sep)) {
-    await mkdir(artifacts, { recursive: true })
-    await writeFile(
-      path.join(artifacts, 'observations.json'),
-      JSON.stringify({ cssResponses, observations }, null, 2) + '\n'
-    )
-  }
   if (cdp) {
     await cdp.call('Browser.close').catch(() => {})
     cdp.close()
@@ -284,8 +264,8 @@ after(async () => {
   server?.closeAllConnections()
   await new Promise((resolve) => (server ? server.close(resolve) : resolve()))
   for (const directory of [output, profile].filter(Boolean)) {
-    assert.equal(path.dirname(directory), path.join(root, 'tmp'))
-    assert.match(path.basename(directory), /^c2-browser-(build|profile)-/)
+    assert.equal(path.dirname(directory), os.tmpdir())
+    assert.match(path.basename(directory), /^whalechat-a11y-(build|profile)-/)
     await rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
   }
 })
@@ -310,11 +290,6 @@ for (const type of ['image/png', '']) {
     await run('c2.mockUploads()')
     await run(`c2.selectImage(${JSON.stringify(type)})`)
     await wait('c2.imageState().requests > 0 || c2.imageState().toast')
-    observations.push({
-      check: 'image-add-guard',
-      mime: type,
-      ...(await cdp.evaluate('c2.imageState()')),
-    })
     await check('c2.imageState()', {
       attachments: 0,
       requests: 0,
@@ -335,14 +310,9 @@ test('a vision model accepts an empty-MIME PNG and opens the draft in the keyboa
   await wait('document.querySelector("[role=dialog] img").naturalWidth === 240')
   await check('document.querySelector("[role=dialog] img").getAttribute("alt")', 'draft-image.png')
   await check('document.activeElement.closest("[role=dialog]") !== null')
-  await screenshot('draft-image-viewer')
   await key('Escape')
   await check('document.querySelector("[role=dialog]")', null)
   await check(`document.activeElement === document.querySelector(${JSON.stringify(preview)})`)
-  observations.push({
-    check: 'empty-mime-accepted-and-draft-viewer-restores-focus',
-    ...(await cdp.evaluate('c2.imageState()')),
-  })
 })
 
 for (const full of [false, true]) {
@@ -356,7 +326,6 @@ for (const full of [false, true]) {
     await wait('document.querySelectorAll("[role=dialog]").length === 2')
     await check('document.activeElement.textContent', '取消')
     await check('document.activeElement.hasAttribute("data-initial-focus")')
-    await screenshot(full ? 'import-v4-confirmation' : 'import-v3-confirmation')
     await key('Tab')
     await check('document.activeElement.textContent', '确认导入')
     await key('Tab', 8)
@@ -369,7 +338,6 @@ for (const full of [false, true]) {
     await check('document.querySelector("[data-app-ready=true]") !== null')
     await check('c2.historyIds()', historyIds)
     await key('Escape')
-    observations.push({ check: 'real-import-cancel-focus', format: full ? 4 : 3 })
   })
 }
 
@@ -586,10 +554,6 @@ test('200% text keeps settings descriptions and controls within the scrolling pa
   await check(
     `(()=>{const panel=document.querySelector('[role=tabpanel]');const descriptions=[...panel.querySelectorAll('[data-setting-description]')];return descriptions.length>=3 && descriptions.every(node=>node.getBoundingClientRect().width>=panel.clientWidth*0.7)})()`
   )
-  observations.push({
-    name: 'setting descriptions',
-    count: await cdp.evaluate('document.querySelectorAll("[data-setting-description]").length'),
-  })
   await key('Escape')
 })
 
@@ -598,7 +562,6 @@ test('mobile backdrop accepts actual pointer clicks while the page stays inert',
   await wait('document.querySelector("[data-open-sidebar]")')
   await activate('[data-open-sidebar]')
   await check('document.querySelector("main").closest("[inert]") !== null')
-  await screenshot('drawer-open')
   const point = await cdp.evaluate(
     `(()=>{const r=document.querySelector('[data-mobile-drawer-panel]').getBoundingClientRect();return{x:r.right+(innerWidth-r.right)/2,y:120}})()`
   )
@@ -606,7 +569,6 @@ test('mobile backdrop accepts actual pointer clicks while the page stays inert',
   await check('document.querySelectorAll("[role=dialog]").length', 0)
   await check('document.querySelector("main").closest("[inert]")', null)
   await check('document.activeElement.hasAttribute("data-open-sidebar")')
-  observations.push({ name: 'backdrop click', point, closed: true })
 })
 
 test('long image filenames keep image, close and save visible at 200% in landscape', async () => {
@@ -614,7 +576,6 @@ test('long image filenames keep image, close and save visible at 200% in landsca
   const name = 'W'.repeat(240) + '.png'
   await run(`c2.image(${JSON.stringify(name)})`)
   await wait('document.querySelector("[role=dialog] img")?.naturalWidth > 0')
-  await screenshot('image-100')
   await scaleText()
   const geometry = await cdp.evaluate(`(()=>{
     const root=document.querySelector('[role=dialog]'),image=root.querySelector('img');
@@ -630,8 +591,6 @@ test('long image filenames keep image, close and save visible at 200% in landsca
   assert.equal(geometry.fullName, name)
   assert.equal(geometry.label, name)
   assert.equal(geometry.scrollable, true, 'full filename remains scrollable')
-  observations.push({ name: 'long image at 200%', geometry })
-  await screenshot('image-200')
   await click('[aria-label="关闭"]')
 })
 

@@ -75,10 +75,8 @@ export const UserMessage = memo(function UserMessage({
       className={clsx(styles.container, isFirst && styles.isFirst)}
       data-message-id={message.id}
       tabIndex={-1}
-      data-message-role="user"
       role="group"
       aria-label={t('userMessageLabel')}
-      data-image-count={message.files.filter((file) => isImage(getFileViewType(file.name))).length}
     >
       {message.files.length > 0 ? (
         <div

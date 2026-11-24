@@ -223,7 +223,6 @@ export const MessageList = ({
         <div
           ref={isMobile ? undefined : scrollRef}
           className={styles.container}
-          data-session-view={session.id}
           data-message-scroll={isMobile ? undefined : 'true'}
         >
           <div

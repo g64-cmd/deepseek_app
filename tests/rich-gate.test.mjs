@@ -4,7 +4,7 @@ import { after, before, beforeEach, test } from 'node:test'
 import { compile, root } from './helpers/compile.mjs'
 
 /**
- * C1 富内容按需渲染回归：
+ * 富内容按需渲染回归：
  * 1) 已结束回答中的代码块/图表/展示公式在进入视口预取范围前保留可读源码，
  *    不执行高亮、语言包加载或图表绘制；
  * 2) 进入预取范围或获得焦点后增强并保留，流式内容始终立即渲染，
