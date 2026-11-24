@@ -18,6 +18,7 @@ export const Modal = ({
   className,
   mainClassName,
   onClose,
+  returnFocus,
 }: {
   title: ReactNode
   children?: ReactNode
@@ -28,6 +29,8 @@ export const Modal = ({
   /** 内容区的 class */
   mainClassName?: string
   onClose: () => void
+  /** 异步检查期间触发器可能被禁用，允许调用方保留原始恢复目标。 */
+  returnFocus?: HTMLElement | null
 }) => {
   const t = useTranslate()
   const titleId = useId()
@@ -36,6 +39,7 @@ export const Modal = ({
   useFocusLayer(root, onClose, {
     initialFocus: () =>
       root.current?.querySelector<HTMLElement>('[data-initial-focus]') ?? titleRef.current,
+    returnFocus: () => returnFocus,
   })
 
   return createPortal(

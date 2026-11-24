@@ -22,7 +22,9 @@ import { ImageViewer } from '../../../src/components/messages/ImageViewer.js'
 import { CitationLink } from '../../../src/components/search/CitationLink.js'
 import { toggleSearchPanel } from '../../../src/components/search/searchPanelState.js'
 import { Button } from '../../../src/components/base/Button.js'
-import { setDraftText } from '../../../src/services/chat/drafts.js'
+import { getDraft, setDraftText } from '../../../src/services/chat/drafts.js'
+import { useToast } from '../../../src/components/base/toastState.js'
+import { exportFullBackup, exportHistory } from '../../../src/services/chat/backup.js'
 import '../../../src/app/theme.css'
 import '../../../src/app/global.css'
 
@@ -160,6 +162,50 @@ const base = {
   ],
 }
 window.c2 = {
+  historyIds: () => useChatStore.getState().sessions.map((session) => session.id),
+  mockUploads(model = 'deepseek-v4-pro') {
+    useSettings.setState({ apiKey: 'fixture-only', model })
+    useChatStore.setState({ activeId: null })
+    window.__uploadRequests = []
+    const original = window.fetch
+    window.fetch = async (url, options) => {
+      if (String(url).endsWith('/files')) {
+        window.__uploadRequests.push(options.body.get('file').name)
+        return Response.json({ id: 'mock-uploaded' })
+      }
+      return original(url, options)
+    }
+  },
+  async selectImage(type: string) {
+    const canvas = document.createElement('canvas')
+    canvas.width = 240
+    canvas.height = 120
+    const context = canvas.getContext('2d')!
+    context.fillStyle = '#d33'
+    context.fillRect(0, 0, canvas.width, canvas.height)
+    const blob = await new Promise<Blob>((resolve) =>
+      canvas.toBlob((blob) => resolve(blob!), 'image/png')
+    )
+    const file = new File([blob], 'draft-image.png', { type })
+    const transfer = new DataTransfer()
+    transfer.items.add(file)
+    const input = document.querySelector<HTMLInputElement>('main input[type=file]')!
+    input.files = transfer.files
+    input.dispatchEvent(new Event('change', { bubbles: true }))
+  },
+  imageState: () => ({
+    attachments: getDraft(null).attachments.length,
+    requests: window.__uploadRequests.length,
+    toast: useToast.getState().message?.key,
+  }),
+  async selectBackup(full: boolean) {
+    const { name, blob } = await (full ? exportFullBackup() : exportHistory())
+    const input = document.querySelector<HTMLInputElement>('input[accept^=".zip"]')!
+    const transfer = new DataTransfer()
+    transfer.items.add(new File([blob], name, { type: 'application/zip' }))
+    input.files = transfer.files
+    input.dispatchEvent(new Event('change', { bubbles: true }))
+  },
   seed() {
     closeSettings()
     setLocale('zh-CN')

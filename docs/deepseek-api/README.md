@@ -21,9 +21,9 @@
 | 总体聊天能力 | [构建 Chatbot](snapshot-2026-11-17/pages/zh-cn/guides/build_a_chatbot.md) | 当前 Demo 的主要能力来源 |
 | 主聊天协议 | [Messages 参考](snapshot-2026-11-17/pages/zh-cn/api/create-message.md)、[Anthropic 兼容指南](snapshot-2026-11-17/pages/zh-cn/guides/anthropic_api.md) | 正在使用 |
 | 搜索、读链接与引用 | [联网工具](snapshot-2026-11-17/pages/zh-cn/guides/web_tools.md) | 已用服务端工具，无需客户端手动执行搜索循环 |
-| 上传与文档问答 | [Files](snapshot-2026-11-17/pages/zh-cn/guides/files_api.md)、[文件解析](snapshot-2026-11-17/pages/zh-cn/guides/document_parsing.md)、[视觉](snapshot-2026-11-17/pages/zh-cn/guides/vision.md) | 已有上传及引用，需补平台与生命周期 |
+| 上传与文档问答 | [Files](snapshot-2026-11-17/pages/zh-cn/guides/files_api.md)、[文件解析](snapshot-2026-11-17/pages/zh-cn/guides/document_parsing.md)、[视觉](snapshot-2026-11-17/pages/zh-cn/guides/vision.md) | 已有上传、平台适配、解析方式与费用确认、失效重试或明确省略；C4 真实收费链路仍待验 |
 | 语音 | [ASR](snapshot-2026-11-17/pages/zh-cn/guides/asr.md)、[TTS（含 WebSocket）](snapshot-2026-11-17/pages/zh-cn/guides/tts.md) | 已有整段 ASR、HTTP 流式 TTS；无 WebSocket TTS |
-| 模型、思考与费用 | [价格](snapshot-2026-11-17/pages/zh-cn/quick_start/pricing.md)、[思考模式](snapshot-2026-11-17/pages/zh-cn/guides/thinking_mode.md)、[余额](snapshot-2026-11-17/pages/zh-cn/api/get-user-balance.md) | 模型固定 Flash；已有思考开关，未做余额界面 |
+| 模型、思考与费用 | [价格](snapshot-2026-11-17/pages/zh-cn/quick_start/pricing.md)、[思考模式](snapshot-2026-11-17/pages/zh-cn/guides/thinking_mode.md)、[余额](snapshot-2026-11-17/pages/zh-cn/api/get-user-balance.md) | 已有 Flash / V4 Pro 与思考强度选择、余额及按模型聚合的用量与费用估算；估算不包含解析、ASR、TTS 完整账单 |
 | 多轮、标题、元信息与安全 | [多轮](snapshot-2026-11-17/pages/zh-cn/guides/multi_round_chat.md)、[标题](snapshot-2026-11-17/pages/zh-cn/guides/conversation_title.md)、[元信息](snapshot-2026-11-17/pages/zh-cn/guides/latest_reminder.md)、[安全](snapshot-2026-11-17/pages/zh-cn/guides/safety.md) | 已有对应代码，需核对组合契约 |
 | 其他聊天协议 | [Chat Completions](snapshot-2026-11-17/pages/zh-cn/api/create-chat-completion.md)、[Responses](snapshot-2026-11-17/pages/zh-cn/api/create-response.md) | 资料已备，应用未全面封装 |
 | 独立工具 | [Search/Fetch](snapshot-2026-11-17/pages/zh-cn/guides/search.md)、[OCR](snapshot-2026-11-17/pages/zh-cn/guides/ocr.md) | 可选工具场景；区别于聊天工具与文件问答 |

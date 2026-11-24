@@ -1,0 +1,253 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-24",
+  "timezone": "Asia/Shanghai",
+  "baseCommit": "2efc4abc1fbef763371faac6291c52f818bf69e5",
+  "state": "Local changes; human re-review pending; not committed or pushed",
+  "review": "tmp/gemini-review-assessment-2026-11-24.md",
+  "reviewInputHash": "44e25a65bdbfbe903f0bbdcff298c935b13403c45afd99f6e06763e9afaf4360",
+  "addressed": [
+    "P2: empty-MIME images use the same classification at the non-vision add guard and draft ownership boundary",
+    "P3: retry omission document-limit feedback counts the filtered request snapshot",
+    "P3: real v3/v4 import confirmation focuses Cancel and restores the original trigger after asynchronous validation",
+    "Optional Web UX: raster draft images use the in-app viewer; SVG download/share behavior retained",
+    "Documentation: stage and commit mapping, credential storage, backup limits and current feature coverage"
+  ],
+  "checks": {
+    "node": {
+      "passed": 128,
+      "total": 128
+    },
+    "c2Browser": {
+      "passed": 22,
+      "total": 22
+    },
+    "c3Browser": {
+      "passed": 22,
+      "total": 22
+    },
+    "type": "passed",
+    "lint": "0 warnings / 0 errors",
+    "webProductionAndCapacitorSync": "passed",
+    "normalAndroidDebug": "passed; 20 seconds; 184 tasks",
+    "screenshotInspection": "Real v3/v4 import confirmations and raster draft viewer inspected"
+  },
+  "browser": {
+    "product": "Chrome/154.0.8037.98",
+    "c2CssResponses": [
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      },
+      {
+        "pathname": "/app.css",
+        "status": 200
+      }
+    ],
+    "c2Observations": [
+      {
+        "check": "image-add-guard",
+        "mime": "image/png",
+        "attachments": 0,
+        "requests": 0,
+        "toast": "modelNoVisionImageRejected"
+      },
+      {
+        "check": "image-add-guard",
+        "mime": "",
+        "attachments": 0,
+        "requests": 0,
+        "toast": "modelNoVisionImageRejected"
+      },
+      {
+        "check": "empty-mime-accepted-and-draft-viewer-restores-focus",
+        "attachments": 1,
+        "requests": 1
+      },
+      {
+        "check": "real-import-cancel-focus",
+        "format": 3
+      },
+      {
+        "check": "real-import-cancel-focus",
+        "format": 4
+      },
+      {
+        "name": "setting descriptions",
+        "count": 3
+      },
+      {
+        "name": "backdrop click",
+        "point": {
+          "x": 356,
+          "y": 120
+        },
+        "closed": true
+      },
+      {
+        "name": "long image at 200%",
+        "geometry": {
+          "image": {
+            "x": 312,
+            "y": 125,
+            "width": 240,
+            "height": 120,
+            "bottom": 245
+          },
+          "save": {
+            "x": 538.71875,
+            "y": 276,
+            "width": 170.546875,
+            "height": 62,
+            "bottom": 338
+          },
+          "close": {
+            "x": 822,
+            "y": 40,
+            "width": 28,
+            "height": 28,
+            "bottom": 68
+          },
+          "name": {
+            "x": 20,
+            "y": 10,
+            "width": 790,
+            "height": 88,
+            "bottom": 98
+          },
+          "fullName": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW.png",
+          "label": "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW.png",
+          "scrollable": true
+        }
+      }
+    ],
+    "isolation": "Fresh local browser profiles; real React/DOM/CSS/IndexedDB; external HTTPS blocked; Files responses intercepted locally"
+  },
+  "apk": {
+    "path": "android/app/build/outputs/apk/debug/app-debug.apk",
+    "applicationId": "com.g64_cmd.whalechat",
+    "variant": "debug",
+    "sha256": "5e4470f09078f761800249d634220e57878d6c652e107d1bd9f00bd89a53693e",
+    "installed": false
+  },
+  "boundaries": [
+    "No emulator or physical-device run in this batch; no real API key or paid requests",
+    "Historical APK, emulator measurements and acceptance scope remain attached to their original versions",
+    "Physical devices, modern WebView, TalkBack, C1 combined performance and C4 paid API flows remain pending",
+    "No claim of full phase C or release acceptance"
+  ],
+  "sourceHashes": {
+    "src/components/base/Modal.tsx": "a047b79226d654c60be4eb5abd124b4d25a91cf98e2ef71805452d30196000fe",
+    "src/components/base/useFocusLayer.ts": "7e61f9aad28d14490f06338153ed99f1b50609a3c996cc83ef00baa393cfffb2",
+    "src/components/settings/SettingsDialog.tsx": "bc050e4aa1336ba4e6f2f1e88ed5ee5b0930bd8f18d1562d5cd4a4c53bc9ba11",
+    "src/components/chatInput/ChatInput.tsx": "e7d8e43513d9567fc10c37334801a3514a71ceb955ed0d30ab6edefde6d52da1",
+    "src/components/chatInput/DraftAttachments.tsx": "079a1f2ff77ca668aa369a8e7c14eccf82d1261cf663d66081cb7e2f0c757871",
+    "src/services/chat/store.ts": "47db3a44c74fa1c8c137f3d408c03ab8cb7df2f7cd00696d47f1f6464ade5c54",
+    "src/services/chat/backup.ts": "4b1c952bb3a0f79b633ac8dcf18440c81c5ab83d9af97efd0c900273c1cab018",
+    "src/services/chat/drafts.ts": "b539d2f2ef112ca61acb2a0caafdc249c4423a585db70e93eefc688b2534c48e",
+    "src/services/attachments.ts": "d5059758333906bac64e58dcd063e7a8cab350a7293dd74a99d6c9e2c09f9469",
+    "tests/requests.test.mjs": "595f2439558fc8c1336216f51a11f2975cae3a6ff00b5cb6986b970f897e3ffc",
+    "tests/accessibility-browser.test.mjs": "5615c7e04a0814a1df70824dfd832daf21d0ec6322964285667b22752287c89d",
+    "tests/helpers/entries/accessibility.tsx": "e7b47a2cda57efc34ad3fed23f41dda99f888442ba713f9f0360ed30e90152f0"
+  },
+  "evidenceHashes": {
+    "tmp/gemini-fix-tests.log": "88baaeb57ab59c30e727c8a2b1615bfc38a027d06be574f68181fd367b896cfa",
+    "tmp/gemini-fix-c2-browser.log": "1087497b878ed49419878930406d6181109dd34ddf2c6bbfea400ee0ddf1528c",
+    "tmp/gemini-fix-c2-browser/observations.json": "f940a08384f1fc15fe0ae7eef12fbb60059054a3ab7d799fb808dd1c72847356",
+    "tmp/gemini-fix-c2-browser/draft-image-viewer.png": "24a17df657ec3bb9977135daa05d6da16b919ccfb97afc89d4658215a3e96a16",
+    "tmp/gemini-fix-c2-browser/import-v3-confirmation.png": "77f2bb046cc6631ce6b38fb77d677c1dffd6c3a86b771e627bd2156cbafecf3f",
+    "tmp/gemini-fix-c2-browser/import-v4-confirmation.png": "96d1b0b6f7dfaf575978fd5eec2a590a90fcf5cddcd27a98335ebd68fb47d728",
+    "tmp/gemini-fix-c3-browser.log": "930873ccf871214f0dde3d70966b69a8f2abe5323d295cc29975f4ed672a8e58",
+    "tmp/gemini-fix-c3-browser/observations.json": "8e1fa43dc764756cde613c960befc2b38cda3a6037d1ceb81c1be7607d851574",
+    "tmp/gemini-fix-type.log": "f876ec7553e281fa587d8701697920d525b114d9d39b68dbbc592bcfec6b09ce",
+    "tmp/gemini-fix-lint.log": "a2aad364e677cec63e2d224380d633135aba9b0dd286afd916cb4138048a14c6",
+    "tmp/gemini-fix-web-build.log": "0a795942f1d0e8097a2fb4623ddfaec43a10cff07b567c3fc4d719d5c606fde2",
+    "tmp/gemini-fix-android-build.log": "aa7c198e351933a2baaf19dd3d22d58ea9015043d697f9c413ea20c82f392fff",
+    "tmp/gemini-fix-before-count.log": "dbb640b2454a1916e02aa528d8542e9315abbd077581cdbeddec4b8ffc55a636",
+    "tmp/gemini-fix-before-browser.log": "401b0d106452d7057eac17fa088ff4339aa09901c2567ca5adaa681f60ddaafe"
+  }
+}

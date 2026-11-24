@@ -1139,7 +1139,7 @@ export const retryUpload = (
         message: '',
         localMessage: {
           key: 'replyDocLimit',
-          params: { count: countRequestDocuments(path.slice(0, index - 1), question) },
+          params: { count: countRequestDocuments(nextRequest.history, nextRequest.question) },
         },
       },
     })

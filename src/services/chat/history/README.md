@@ -13,7 +13,7 @@ chat_session_index.json                            会话索引
 chat_sessions/{session_id}_files/{file_id}_{file_name}  全部图片原件
 ```
 
-完整备份（v4）在索引之后追加 `app_settings.json`（应用设置与草稿，不含 API Key），附件原件改存 `files/{file_id}`（含非图片，`FILE.mime_type` 还原本地 MIME），会话消息额外携带 `model` / `effort` / `usage`（回复生成时的快照与用量明细，v3 不导出这些字段）。
+完整备份（v4）在索引之后追加 `app_settings.json`（应用设置与草稿文本，不含 API Key），本地可用的会话附件原件改存 `files/{file_id}`（含非图片，`FILE.mime_type` 还原本地 MIME），会话消息额外携带 `model` / `effort` / `usage`（回复生成时的快照与用量明细，v3 不导出这些字段）。
 
 C4 增加可选 `FILE.purpose` 与 `settings.doc_parse_mode`，保存附件原解析方式和之后上传的默认方式；旧 v4 缺省字段仍可导入。v3 不增加这些字段。计费知悉与再次解析授权不随备份迁移。导入的文件仍没有可用 serverId；需要付费解析的原件在补传前单独请求授权，缺原件或补传失败先暂停等待用户重试或明确省略，不再静默发送缺附件的聊天。
 
@@ -53,7 +53,7 @@ C4 增加可选 `FILE.purpose` 与 `settings.doc_parse_mode`，保存附件原�
 
 v3 归档不保存 API Key 或应用设置，也不能完整恢复本地运行状态：正文引用角标、非图片附件原件、模型、思考签名、原工具调用 ID、结构化错误信息（类型、状态码及重试操作等）、用量明细、非当前分支的选择，以及 `latestReminder` 快照不会保留。新提问的快照按当前设置生成。
 
-完整备份（v4）在上述消息内容之外额外保留：模型与思考强度快照、每条回复的用量明细、全部附件原件（含非图片）及其 MIME、应用设置与草稿文本。**API Key 永不导出**（Web 明文与原生 Keystore 两态均不包含）；正文引用角标、思考签名、原工具调用 ID、结构化错误信息、非当前分支的选择与 `latestReminder` 快照仍不保留。
+完整备份（v4）在上述消息内容之外额外保留：模型与思考强度快照、每条回复的用量明细、本地可用的会话附件原件（含非图片）及其 MIME、应用设置与草稿文本。未发送的草稿附件不打包，本地缺失的原件也无法补入归档。**API Key 永不导出**（Web 明文与 Android Keystore 加密存储两态均不包含）；正文引用角标、思考签名、原工具调用 ID、结构化错误信息、非当前分支的选择与 `latestReminder` 快照仍不保留。
 
 ## 模块与 ZIP 支持
 

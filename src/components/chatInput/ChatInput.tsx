@@ -116,7 +116,7 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
     // 当前模型不支持图片时不允许添加，避免用户整理好文字后才发现发不出去
     if (
       !supportsVision(useSettings.getState().model) &&
-      files.some((file) => isImageFile(file.type))
+      files.some((file) => isImageFile(resolveMimeType(file)))
     ) {
       showToast({ key: 'modelNoVisionImageRejected' })
       return

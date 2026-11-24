@@ -305,6 +305,74 @@ test('modal initial focus, Tab wrap, background isolation and focus restoration'
   await check('document.querySelectorAll("[inert]").length', 0)
 })
 
+for (const type of ['image/png', '']) {
+  test(`non-vision model rejects a valid PNG before drafting or uploading (MIME ${type || 'empty'})`, async () => {
+    await run('c2.mockUploads()')
+    await run(`c2.selectImage(${JSON.stringify(type)})`)
+    await wait('c2.imageState().requests > 0 || c2.imageState().toast')
+    observations.push({
+      check: 'image-add-guard',
+      mime: type,
+      ...(await cdp.evaluate('c2.imageState()')),
+    })
+    await check('c2.imageState()', {
+      attachments: 0,
+      requests: 0,
+      toast: 'modelNoVisionImageRejected',
+    })
+  })
+}
+
+test('a vision model accepts an empty-MIME PNG and opens the draft in the keyboard-accessible viewer', async () => {
+  await run('c2.mockUploads("deepseek-flash")')
+  await run('c2.selectImage("")')
+  const preview = 'main button[aria-label="draft-image.png"]'
+  await wait(`document.querySelector(${JSON.stringify(preview)})`)
+  await check('c2.imageState().attachments', 1)
+  await check('c2.imageState().requests', 1)
+  await activate(preview)
+  await wait('document.querySelector("[role=dialog] img")')
+  await wait('document.querySelector("[role=dialog] img").naturalWidth === 240')
+  await check('document.querySelector("[role=dialog] img").getAttribute("alt")', 'draft-image.png')
+  await check('document.activeElement.closest("[role=dialog]") !== null')
+  await screenshot('draft-image-viewer')
+  await key('Escape')
+  await check('document.querySelector("[role=dialog]")', null)
+  await check(`document.activeElement === document.querySelector(${JSON.stringify(preview)})`)
+  observations.push({
+    check: 'empty-mime-accepted-and-draft-viewer-restores-focus',
+    ...(await cdp.evaluate('c2.imageState()')),
+  })
+})
+
+for (const full of [false, true]) {
+  test(`${full ? 'full v4 backup' : 'legacy v3 history'} import confirmation initially focuses Cancel and restores the upload trigger`, async () => {
+    const historyIds = await cdp.evaluate('c2.historyIds()')
+    await run('c2.openSettings("data")')
+    const trigger = 'input[accept^=".zip"]'
+    await wait(`document.querySelector(${JSON.stringify(trigger)})`)
+    await run(`document.querySelector(${JSON.stringify(trigger)}).previousElementSibling.focus()`)
+    await run(`c2.selectBackup(${full})`)
+    await wait('document.querySelectorAll("[role=dialog]").length === 2')
+    await check('document.activeElement.textContent', '取消')
+    await check('document.activeElement.hasAttribute("data-initial-focus")')
+    await screenshot(full ? 'import-v4-confirmation' : 'import-v3-confirmation')
+    await key('Tab')
+    await check('document.activeElement.textContent', '确认导入')
+    await key('Tab', 8)
+    await check('document.activeElement.textContent', '取消')
+    await key(full ? 'Escape' : 'Enter')
+    await check('document.querySelectorAll("[role=dialog]").length', 1)
+    await check(
+      `document.activeElement === document.querySelector(${JSON.stringify(trigger)}).previousElementSibling`
+    )
+    await check('document.querySelector("[data-app-ready=true]") !== null')
+    await check('c2.historyIds()', historyIds)
+    await key('Escape')
+    observations.push({ check: 'real-import-cancel-focus', format: full ? 4 : 3 })
+  })
+}
+
 test('Portal menu supports arrows, typeahead, activation, Tab and top-only Back/Escape', async () => {
   await activate('#fixture-open')
   await focus('#fixture-menu')

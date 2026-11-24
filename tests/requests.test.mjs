@@ -80,6 +80,67 @@ test('image upload keeps an in-limit original unchanged', async () => {
   assert.equal(await api.resizeUploadImage(original), original)
   assert.equal(images.drawn.length, 0)
 })
+
+test('retry omission reports the document count from the filtered request and sends no HTTP when still over limit', () => {
+  let http = 0
+  globalThis.fetch = async () => {
+    http++
+    return Response.json({ id: 'unexpected' })
+  }
+  const files = Array.from({ length: 22 }, (_, i) => ({
+    id: `doc-${i}`,
+    serverId: i ? `server-${i}` : null,
+    name: `${i}.txt`,
+    size: 1,
+    isImage: false,
+    mimeType: 'text/plain',
+    purpose: 'user_data',
+  }))
+  const question = {
+    id: 'user',
+    role: 'user',
+    content: 'question',
+    files,
+    createdAt: 1,
+    parentId: null,
+    selectedChildId: 'reply',
+  }
+  const reply = {
+    id: 'reply',
+    role: 'assistant',
+    model: 'deepseek-flash',
+    status: 'error',
+    prefix: false,
+    blocks: [],
+    createdAt: 2,
+    parentId: 'user',
+    error: { kind: 'contextMissing', message: '', fileIds: ['doc-0'] },
+  }
+  const session = {
+    id: 'count',
+    title: 'count',
+    createdAt: 1,
+    updatedAt: 2,
+    rootMessageId: 'user',
+    messages: [question, reply],
+  }
+  api.useChatStore.setState({
+    sessions: [session],
+    sessionCache: { count: session },
+    activeId: 'count',
+  })
+  api.retryUpload('count', 'reply', { omitMissing: true })
+  const updated = api.useChatStore.getState().sessionCache.count
+  const error = updated.messages[1].error
+  assert.equal(error.kind, 'docLimit')
+  assert.equal(error.localMessage.params.count, 21)
+  assert.equal(http, 0)
+  assert.equal(
+    updated.messages[0].files.length,
+    22,
+    'omission filters the request without deleting original metadata'
+  )
+})
 for (const [width, height, expected] of [
   [8192, 4096, [4096, 2048]],
   [2048, 8192, [1024, 4096]],

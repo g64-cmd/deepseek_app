@@ -63,19 +63,20 @@ const AttachmentItem = ({
   // 「上传失败」只显示重试图标，其余原因写在图片上：可重试时在图标下方，不可重试时贴底
   const showReason = failed && error !== undefined && error !== t('uploadFileStatusFailed')
   const preview = url ? <img src={url} alt={item.file.name} /> : null
-  const openNative = type !== 'image/svg+xml' ? () => setViewerOpen(true) : onOpen
+  // 栅格图片双端使用内嵌查看器；SVG 保持隔离缩略图与下载/分享操作。
+  const openPreview = () => setViewerOpen(true)
   return image && url !== null ? (
     <div
       className={clsx(styles.attachment, failed && styles.attachmentFailed)}
       title={error ?? item.file.name}
     >
       {status === 'done' && url ? (
-        platform.kind === 'native' ? (
+        type !== 'image/svg+xml' || platform.kind === 'native' ? (
           <button
             type="button"
             className={styles.previewAction}
             aria-label={item.file.name}
-            onClick={openNative}
+            onClick={type !== 'image/svg+xml' ? openPreview : onOpen}
           >
             {preview}
           </button>

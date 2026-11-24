@@ -474,9 +474,10 @@ const ImportConfirm = ({
       title={t('historyImportConfirmTitle')}
       className={styles.importConfirm}
       onClose={historyImport.cancel}
+      returnFocus={historyImport.opener.current}
       footer={
         <>
-          <Button variant="outlined" size="m" autoFocus onClick={historyImport.cancel}>
+          <Button variant="outlined" size="m" data-initial-focus onClick={historyImport.cancel}>
             {t('cancel')}
           </Button>
           <Button variant="dangerOutlined" size="m" onClick={() => void historyImport.confirm()}>
@@ -633,8 +634,9 @@ const SettingCell = ({
   )
 }
 
-/** 选文件后先提示覆盖；确认后才检查文件并执行导入，任何错误都提示导入失败。 */
+/** 选文件后识别归档格式，再确认覆盖并导入；检查或导入错误均提示失败。 */
 const useHistoryImport = () => {
+  const opener = useRef<HTMLElement | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [kind, setKind] = useState<ArchiveKind>('legacy')
   const [busy, setBusy] = useState(false)
@@ -643,6 +645,8 @@ const useHistoryImport = () => {
 
   /** 选中文件即校验格式并识别归档类型，确认弹窗据此区分兼容格式与完整备份 */
   const select = (selected: File) => {
+    // busy 会禁用上传按钮并移走焦点，必须在异步格式检查开始前保存触发器。
+    opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
     setStatus(null)
     setBusy(true)
     checkArchiveKind(selected)
@@ -686,7 +690,7 @@ const useHistoryImport = () => {
     }
   }
 
-  return { file, kind, busy, status, select, cancel: () => setFile(null), confirm }
+  return { file, kind, busy, status, select, opener, cancel: () => setFile(null), confirm }
 }
 
 /** 导入 = 覆盖：用选中文件替换本地全部会话与附件。 */

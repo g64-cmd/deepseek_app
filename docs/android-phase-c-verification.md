@@ -1,5 +1,7 @@
 # Android 阶段 C 验证记录
 
+当前提交映射（2026-11-24）：C2 / C4 与其复审修复已提交至 `develop` 的 `973154e`；C3 与读库阶段 Cancel 补修已提交为 `2efc4ab`。第 9–16 节中的“未提交”等为当时状态，APK 哈希、模拟器结果及待验边界按各节原版本保留；不能直接用旧包结果宣称当前版本通过设备验收。Gemini 复审后的增量修复见第 17 节。
+
 日期：2026-11-22 ~ 2026-11-24（Asia/Shanghai）。C1 批次（富内容按需渲染）代码基线：`develop` / `57fab81` + 探针 v3/v4 测量改动（见第 2 节，随本记录提交）。环境与[C0 基线记录](android-phase-c0-baseline.md)第 1 节相同（Pixel_8 AVD / API 34 / WebView 113、独立 `com.g64_cmd.whalechat.c0` 包、production Web 资源 + debug 原生壳、离线固定夹具；v3 时 1,006 会话 / 115.4 MiB 原件，v4 起新增长尾场景共 1,007 会话）。
 
 **结论（复核修订）**：C1 混合会话热切换与冻结控制达到首轮目标——300 条混合会话热切换尾部可读中位 **1.69 秒**（v4 复测 1.73 秒；目标 ≤2 秒）、最大 1.98 秒（v4 复测 1.82 秒；目标 ≤3 秒）；对照 C0 基线同一场景热切换中位 40.1 秒，约 **24 倍**改善，且同探针对照（基线 APK + v3 探针）复测为 36.2 秒。**20 轮内存循环逐轮记录的完整操作观察（v4）中最大单任务 1.73 秒，无 ≥5 秒主线程冻结**；20 轮内存四点采样无单调增长。纯文本热切换满足目标，但 v4 的纯文本冷切换中位 1020.7ms，比 C0 的 875.4ms 高 16.6%，不满足原定 10% 目标，因此撤回当时“首轮目标全部达到 / 纯文本无退化”的表述。当前构建的冷切换交替复测见第 11 节；真机、TalkBack、大字体与组合场景验收仍待（第 7 节）。
@@ -337,3 +339,21 @@ C3 用例将本地异步 JS 分块延迟 1 秒，分别实际操作改词、切�
 验证：`pnpm test` **127/127**，`pnpm test:c3` **22/22**，`pnpm test:c2` **17/17**，类型、lint（0 warnings / 0 errors）、production Web/Capacitor 同步、常规 Android debug 均通过。独立浏览器配置、真实 React/DOM/CSS/IndexedDB、主/异步 CSS HTTP 200；无真实 Key 或付费请求。日志为 `tmp/c3-r3-tests.log`、`tmp/c3-r3-browser.log`、`tmp/c3-r3-c2-browser.log`；详细状态在 `tmp/c3-r3-browser/observations.json` 和 `tmp/c3-r3-independent/browser/observations.json`，独立日志为 `tmp/c3-r3-independent/results.log`。
 
 常规 Android 构建 **22 秒、184 个任务**，应用 ID `com.g64_cmd.whalechat`，APK SHA-256 `a9eaf3ecbcee03c1b040b681244283acae362b897fbbafa9aa1db20e3522963d`，输出 `android/app/build/outputs/apk/debug/app-debug.apk`；日志 `tmp/c3-r3-web-build.log`、`tmp/c3-r3-android-build.log`。第 14、15 节的 APK/证据继续保留其历史身份。本批未新增模拟器/真机、TalkBack、C1 或 C4 验收，不据构建与浏览器回归宣称阶段 C 整体通过。
+
+## 17. Gemini 复审后的附件、导入焦点与文档改进（2026-11-24）
+
+基线为 `develop` / `2efc4ab`，依据 `tmp/gemini-review-assessment-2026-11-24.md` 的核实意见实施。本批本地待复审，未提交、未推送。摘要与哈希见 [Gemini 复审修复记录](perf/c-2026-11-24-gemini-fixes.json)。
+
+| 项 | 改进与验证 |
+| --- | --- |
+| 空 MIME 图片添加拦截（P2） | ChatInput 与草稿服务统一使用 `resolveMimeType` 识别图片。真实 PNG 的 MIME 有值与为空时，在非视觉模型下均提示不支持，草稿附件与 Files 调用均为 0；视觉模型仍能正常添加空 MIME 图片并上传一次。 |
+| 导入确认焦点一致性（P3） | 取消按钮使用 Modal 支持的 `data-initial-focus`。真实导入回归另暴露格式检查 busy 禁用上传按钮后，原焦点丢失：在检查前捕获触发器，并通过 Modal 的可选 returnFocus 传给既有焦点层。真实 v3/v4 ZIP 经导出、文件输入与格式检查后，确认框初始焦点均为取消，Tab 到确认导入，Shift+Tab 返回取消；Enter / Escape 取消后恢复原上传按钮，会话不变。 |
+| 省略后的超限计数（P3） | retryUpload 的提示改用 nextRequest 的 history/question，与守卫读取相同快照。22 个文档引用中明确省略 1 个后，错误提示为 21，HTTP 调用为 0，原消息附件元数据仍为 22。新增正式测试在修复前复现 22≠21。 |
+| Web 草稿图片预览（体验统一） | 栅格图片双端均通过内嵌 ImageViewer 打开。浏览器实际解码图片，键盘打开后焦点留在查看器，Escape 关闭后返回预览按钮；SVG 仍使用隔离缩略图与下载/分享路径。 |
+| 文档 | 同步中英文 README 的阶段 A/B/C 状态、Android Keystore 加密凭据存储、v3/v4 备份范围、模型/余额/检索等功能，明确上游在线 Demo 不含本仓库全部新增功能。API 资料入口更新项目实现映射，不改官方快照。完整备份只承诺本地可用的会话附件原件、设置和草稿文本；未发送草稿附件与缺失原件不作完整保留承诺。第 9–16 节的历史构建与验收数据不回写。 |
+
+验证：常规 **128/128**、C2 真实浏览器 **22/22**、C3 真实浏览器 **22/22**，类型、lint（0 warnings / 0 errors）、production Web / Capacitor 同步及常规 Android debug 构建通过。浏览器 Chrome 154.0.8037.98，真实 React/DOM/CSS、隔离配置，样式请求 HTTP 200 与布局守卫通过。新增 1 项 Node、5 项浏览器回归；实际导入确认覆盖了简化 Modal 夹具原先没有验证的流程。
+
+日志：`tmp/gemini-fix-tests.log`、`tmp/gemini-fix-c2-browser.log`、`tmp/gemini-fix-c3-browser.log`、`tmp/gemini-fix-type.log`、`tmp/gemini-fix-lint.log`、`tmp/gemini-fix-web-build.log`、`tmp/gemini-fix-android-build.log`。浏览器观测及截图为 `tmp/gemini-fix-c2-browser/`、`tmp/gemini-fix-c3-browser/`；已检查真实 v3/v4 导入取消按钮的可见焦点与草稿图片查看器截图。定向修复前日志保留于 `tmp/gemini-fix-before-count.log`、`tmp/gemini-fix-before-browser.log`；首次浏览器沙箱限制下未暴露 CDP，后在获准的隔离浏览器中复现，基础设施失败不计作产品缺陷。
+
+常规 Android 构建 **20 秒、184 个任务**，应用 ID `com.g64_cmd.whalechat`，APK SHA-256 `5e4470f09078f761800249d634220e57878d6c652e107d1bd9f00bd89a53693e`，输出 `android/app/build/outputs/apk/debug/app-debug.apk`。本批没有启动模拟器、安装到设备或使用真实 Key；Files 调用由本地响应接管，外部 HTTPS 阻断。目标真机、现代 WebView、TalkBack、C1 组合性能、C4 真实收费链路及既有未验项仍按原范围待验，不将本批浏览器与构建通过作为阶段 C 整体验收。

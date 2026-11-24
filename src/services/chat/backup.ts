@@ -122,7 +122,7 @@ export const exportHistory = (): Promise<{ name: string; blob: Blob }> =>
   })
 
 /**
- * 完整应用备份：会话（含 model/effort/usage）、全部附件原件、应用设置与草稿；不含 API Key。
+ * 完整应用备份：会话（含 model/effort/usage）、本地可用的会话附件原件、应用设置与草稿文本；不含 API Key。
  * 只能导入回本应用（官方 App 不识别该格式）。
  */
 export const exportFullBackup = (): Promise<{ name: string; blob: Blob }> =>
